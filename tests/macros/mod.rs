@@ -84,7 +84,7 @@ mod integration {
         }
 
         pub fn set_value(&mut self, value: u32) {
-            Self::require_unpaused();
+            self.require_unpaused();
             Self::require_role(&Role::CanSetValue);
 
             let old = self.value;
@@ -141,7 +141,7 @@ struct MigrateIntegration {
 impl MigrateHook for MigrateIntegration {
     fn on_migrate(old: Integration) -> Self {
         old.require_owner();
-        Self::require_unpaused();
+        old.require_unpaused();
 
         Self {
             new_value: "my string".to_string(),
@@ -161,7 +161,7 @@ impl MigrateIntegration {
     }
 
     pub fn set_value(&mut self, value: u32) {
-        Self::require_unpaused();
+        self.require_unpaused();
         Self::require_role(&Role::CanSetValue);
 
         let old = self.moved_value;
