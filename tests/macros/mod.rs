@@ -76,7 +76,7 @@ mod integration {
         }
 
         pub fn add_value_setter(&mut self, account_id: AccountId) {
-            Self::require_owner();
+            self.require_owner();
 
             self.add_role(&account_id, &Role::CanSetValue);
 
@@ -140,7 +140,7 @@ struct MigrateIntegration {
 
 impl MigrateHook for MigrateIntegration {
     fn on_migrate(old: Integration) -> Self {
-        Self::require_owner();
+        old.require_owner();
         Self::require_unpaused();
 
         Self {
@@ -153,7 +153,7 @@ impl MigrateHook for MigrateIntegration {
 #[near]
 impl MigrateIntegration {
     pub fn add_value_setter(&mut self, account_id: AccountId) {
-        Self::require_owner();
+        self.require_owner();
 
         self.add_role(&account_id, &Role::CanSetValue);
 
