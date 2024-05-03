@@ -1,9 +1,9 @@
 //! Queue and approve actions
 
 use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    env, require,
-    serde::{Deserialize, Serialize},
+    borsh::{BorshDeserialize, BorshSerialize},
+    env, near, require,
+    serde::Serialize,
     AccountId, BorshStorageKey,
 };
 use thiserror::Error;
@@ -63,18 +63,18 @@ pub trait ApprovalConfiguration<A, S> {
 }
 
 /// An action request is composed of an action that will be executed when the
-/// associated approval state is satisfied
-#[derive(Serialize, Deserialize, BorshSerialize, BorshDeserialize, Debug)]
-#[serde(crate = "near_sdk::serde")]
+/// associated approval state is satisfied.
+#[derive(Debug)]
+#[near(serializers = [borsh, json])]
 pub struct ActionRequest<A, S> {
-    /// The action that will be executed when the approval state is
-    /// fulfilled
+    /// The action that will be executed when the approval state is fulfilled.
     pub action: A,
-    /// The associated approval state
+    /// The associated approval state.
     pub approval_state: S,
 }
 
-#[derive(BorshSerialize, BorshStorageKey)]
+#[derive(BorshStorageKey)]
+#[near]
 enum ApprovalStorageKey {
     NextRequestId,
     Config,
@@ -336,11 +336,7 @@ where
 #[cfg(test)]
 mod tests {
     use near_sdk::{
-        borsh::{self, BorshDeserialize, BorshSerialize},
-        near_bindgen,
-        serde::Serialize,
-        test_utils::VMContextBuilder,
-        testing_env, AccountId, BorshStorageKey,
+        near, test_utils::VMContextBuilder, testing_env, AccountId, BorshStorageKey, PanicOnDefault,
     };
     use near_sdk_contract_tools_macros::Rbac;
 
@@ -350,12 +346,14 @@ mod tests {
         Action, ActionRequest, ApprovalConfiguration, ApprovalManager, ApprovalManagerInternal,
     };
 
-    #[derive(BorshSerialize, BorshStorageKey)]
+    #[derive(BorshStorageKey)]
+    #[near]
     enum Role {
         Multisig,
     }
 
-    #[derive(BorshSerialize, BorshDeserialize, Debug, PartialEq, Eq, Clone)]
+    #[derive(Debug, PartialEq, Eq, Clone)]
+    #[near]
     enum MyAction {
         SayHello,
         SayGoodbye,
@@ -378,12 +376,12 @@ mod tests {
         }
     }
 
-    #[derive(Rbac)]
+    #[derive(Rbac, PanicOnDefault)]
     #[rbac(roles = "Role", crate = "crate")]
-    #[near_bindgen]
+    #[near(contract_state)]
     struct Contract {}
 
-    #[near_bindgen]
+    #[near]
     impl Contract {
         #[init]
         pub fn new(threshold: u8) -> Self {
@@ -401,13 +399,14 @@ mod tests {
         }
     }
 
-    #[derive(BorshSerialize, BorshDeserialize, Debug)]
+    #[derive(Debug)]
+    #[near]
     struct MultisigConfig {
         pub threshold: u8,
     }
 
-    #[derive(BorshSerialize, BorshDeserialize, Serialize, Default, Debug)]
-    #[serde(crate = "near_sdk::serde")]
+    #[derive(Default, Debug)]
+    #[near(serializers = [borsh, json])]
     struct MultisigApprovalState {
         pub approved_by: Vec<AccountId>,
     }
@@ -490,9 +489,9 @@ mod tests {
 
         let mut contract = Contract::new(2);
 
-        contract.add_role(alice.clone(), &Role::Multisig);
-        contract.add_role(bob, &Role::Multisig);
-        contract.add_role(charlie.clone(), &Role::Multisig);
+        contract.add_role(&alice, &Role::Multisig);
+        contract.add_role(&bob, &Role::Multisig);
+        contract.add_role(&charlie, &Role::Multisig);
 
         predecessor(&alice);
         let request_id = contract
@@ -521,7 +520,7 @@ mod tests {
 
         let mut contract = Contract::new(2);
 
-        contract.add_role(alice.clone(), &Role::Multisig);
+        contract.add_role(&alice, &Role::Multisig);
 
         predecessor(&alice);
         let request_id = contract
@@ -540,7 +539,7 @@ mod tests {
 
         let mut contract = Contract::new(2);
 
-        contract.add_role(alice.clone(), &Role::Multisig);
+        contract.add_role(&alice, &Role::Multisig);
 
         predecessor(&alice);
 
@@ -560,8 +559,8 @@ mod tests {
 
         let mut contract = Contract::new(2);
 
-        contract.add_role(alice.clone(), &Role::Multisig);
-        contract.add_role(bob.clone(), &Role::Multisig);
+        contract.add_role(&alice, &Role::Multisig);
+        contract.add_role(&bob, &Role::Multisig);
 
         predecessor(&alice);
 
@@ -584,9 +583,9 @@ mod tests {
 
         let mut contract = Contract::new(2);
 
-        contract.add_role(alice.clone(), &Role::Multisig);
-        contract.add_role(bob.clone(), &Role::Multisig);
-        contract.add_role(charlie.clone(), &Role::Multisig);
+        contract.add_role(&alice, &Role::Multisig);
+        contract.add_role(&bob, &Role::Multisig);
+        contract.add_role(&charlie, &Role::Multisig);
 
         predecessor(&alice);
         let request_id = contract

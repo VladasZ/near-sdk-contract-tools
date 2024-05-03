@@ -1,21 +1,15 @@
-#![allow(missing_docs)]
-
-// Ignore
-pub fn main() {}
+workspaces_tests::predicate!();
 
 use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    env,
-    json_types::U128,
-    log, near_bindgen, AccountId, PanicOnDefault, PromiseOrValue,
+    env, json_types::U128, log, near, AccountId, NearToken, PanicOnDefault, PromiseOrValue,
 };
 use near_sdk_contract_tools::ft::*;
 
-#[derive(PanicOnDefault, BorshSerialize, BorshDeserialize)]
-#[near_bindgen]
+#[derive(PanicOnDefault)]
+#[near(contract_state)]
 pub struct Contract {}
 
-#[near_bindgen]
+#[near]
 impl Nep141Receiver for Contract {
     fn ft_on_transfer(
         &mut self,
@@ -33,7 +27,7 @@ impl Nep141Receiver for Contract {
             log!("Transferring {} to {}", amount.0, account_id);
 
             return ext_nep141::ext(env::predecessor_account_id())
-                .with_attached_deposit(1)
+                .with_attached_deposit(NearToken::from_yoctonear(1u128))
                 .ft_transfer(account_id, amount, None)
                 .then(Contract::ext(env::current_account_id()).return_value(amount)) // ask to return the token even though we don't own it anymore
                 .into();
@@ -43,7 +37,7 @@ impl Nep141Receiver for Contract {
     }
 }
 
-#[near_bindgen]
+#[near]
 impl Contract {
     #[init]
     pub fn new() -> Self {

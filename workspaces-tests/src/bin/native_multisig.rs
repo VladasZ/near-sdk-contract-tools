@@ -1,12 +1,6 @@
-#![allow(missing_docs)]
+workspaces_tests::predicate!();
 
-// Ignore
-pub fn main() {}
-
-use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    env, near_bindgen, AccountId, BorshStorageKey, PanicOnDefault, Promise,
-};
+use near_sdk::{env, near, AccountId, BorshStorageKey, PanicOnDefault, Promise};
 use near_sdk_contract_tools::{
     approval::{
         native_transaction_action::{self, NativeTransactionAction},
@@ -17,18 +11,19 @@ use near_sdk_contract_tools::{
     Rbac, SimpleMultisig,
 };
 
-#[derive(Clone, Debug, BorshSerialize, BorshStorageKey)]
+#[derive(BorshStorageKey, Clone, Debug)]
+#[near]
 pub enum Role {
     Multisig,
 }
 
-#[derive(PanicOnDefault, BorshSerialize, BorshDeserialize, Rbac, SimpleMultisig)]
+#[derive(Rbac, SimpleMultisig, PanicOnDefault)]
 #[simple_multisig(action = "NativeTransactionAction", role = "Role::Multisig")]
 #[rbac(roles = "Role")]
-#[near_bindgen]
+#[near(contract_state)]
 pub struct Contract {}
 
-#[near_bindgen]
+#[near]
 impl Contract {
     const APPROVAL_THRESHOLD: u8 = 2;
     const VALIDITY_PERIOD: u64 = 1_000_000 * 1_000 * 60 * 60 * 24 * 7;
@@ -44,7 +39,7 @@ impl Contract {
     }
 
     pub fn obtain_multisig_permission(&mut self) {
-        self.add_role(env::predecessor_account_id(), &Role::Multisig);
+        self.add_role(&env::predecessor_account_id(), &Role::Multisig);
     }
 
     pub fn request(

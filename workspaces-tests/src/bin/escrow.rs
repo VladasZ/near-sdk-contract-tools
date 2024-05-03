@@ -1,25 +1,18 @@
-#![allow(missing_docs)]
+workspaces_tests::predicate!();
 
-use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    env, near_bindgen,
-    serde::{Deserialize, Serialize},
-    AccountId, PanicOnDefault,
-};
+use near_sdk::{env, near, AccountId, PanicOnDefault};
 use near_sdk_contract_tools::{escrow::Escrow, Escrow};
 
-pub fn main() {} // Ignore
-
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
-#[serde(crate = "near_sdk::serde")]
+#[derive(Clone)]
+#[near(serializers = [borsh, json])]
 pub enum PrimaryColour {
     Red,
     Yellow,
     Blue,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone)]
-#[serde(crate = "near_sdk::serde")]
+#[derive(Clone)]
+#[near(serializers = [borsh, json])]
 pub enum SecondaryColour {
     Orange,
     Green,
@@ -40,13 +33,12 @@ impl From<(PrimaryColour, PrimaryColour)> for SecondaryColour {
     }
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, PanicOnDefault, Escrow)]
+#[derive(Escrow, PanicOnDefault)]
 #[escrow(id = "PrimaryColour", state = "AccountId")]
-#[serde(crate = "near_sdk::serde")]
-#[near_bindgen]
+#[near(contract_state)]
 pub struct Contract {}
 
-#[near_bindgen]
+#[near]
 impl Contract {
     #[init]
     pub fn new() -> Self {

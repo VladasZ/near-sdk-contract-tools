@@ -76,7 +76,7 @@ pub fn expand(meta: Nep171Meta) -> Result<TokenStream, darling::Error> {
             #root
         }
 
-        #[#near_sdk::near_bindgen]
+        #[#near_sdk::near]
         impl #imp #me::standard::nep171::Nep171Resolver for #ident #ty #wher {
             #[private]
             fn nft_resolve_transfer(
@@ -88,7 +88,7 @@ pub fn expand(meta: Nep171Meta) -> Result<TokenStream, darling::Error> {
             ) -> bool {
                 use #me::standard::nep171::*;
 
-                let _ = approved_account_ids; // #[near_bindgen] cares about parameter names
+                let _ = approved_account_ids; // #[near] cares about parameter names
 
                 #near_sdk::require!(
                     #near_sdk::env::promise_results_count() == 1,
@@ -124,7 +124,7 @@ pub fn expand(meta: Nep171Meta) -> Result<TokenStream, darling::Error> {
             }
         }
 
-        #[#near_sdk::near_bindgen]
+        #[#near_sdk::near]
         impl #imp #me::standard::nep171::Nep171 for #ident #ty #wher {
             #[payable]
             fn nft_transfer(
@@ -194,7 +194,7 @@ pub fn expand(meta: Nep171Meta) -> Result<TokenStream, darling::Error> {
                 let [token_id] = token_ids;
 
                 ext_nep171_receiver::ext(receiver_id.clone())
-                    .with_static_gas(#near_sdk::env::prepaid_gas() - GAS_FOR_NFT_TRANSFER_CALL)
+                    .with_static_gas(#near_sdk::env::prepaid_gas().saturating_sub(GAS_FOR_NFT_TRANSFER_CALL))
                     .nft_on_transfer(
                         sender_id.clone(),
                         sender_id.clone(),

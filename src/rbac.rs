@@ -28,10 +28,8 @@
 use std::iter::FusedIterator;
 
 use near_sdk::{
-    borsh::{self, BorshSerialize},
-    env, require,
-    store::UnorderedSet,
-    AccountId, BorshStorageKey, IntoStorageKey,
+    borsh::BorshSerialize, collections::UnorderedSet, env, require, AccountId, BorshStorageKey,
+    IntoStorageKey,
 };
 
 use crate::{slot::Slot, DefaultStorageKey};
@@ -40,6 +38,7 @@ const REQUIRE_ROLE_FAIL_MESSAGE: &str = "Unauthorized role";
 const PROHIBIT_ROLE_FAIL_MESSAGE: &str = "Prohibited role";
 
 #[derive(BorshSerialize, BorshStorageKey)]
+#[borsh(crate = "near_sdk::borsh")]
 enum StorageKey<R> {
     Role(R),
 }
@@ -85,7 +84,7 @@ pub trait Rbac {
     fn has_role(account_id: &AccountId, role: &Self::Role) -> bool;
 
     /// Assigns a role to an account.
-    fn add_role(&mut self, account_id: AccountId, role: &Self::Role);
+    fn add_role(&mut self, account_id: &AccountId, role: &Self::Role);
 
     /// Removes a role from an account.
     fn remove_role(&mut self, account_id: &AccountId, role: &Self::Role);
@@ -135,7 +134,7 @@ impl<I: RbacInternal> Rbac for I {
             .unwrap_or(false)
     }
 
-    fn add_role(&mut self, account_id: AccountId, role: &Self::Role) {
+    fn add_role(&mut self, account_id: &AccountId, role: &Self::Role) {
         Self::with_members_of_mut(role, |set| set.insert(account_id));
     }
 
@@ -180,7 +179,7 @@ impl Iterator for Iter {
     type Item = AccountId;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let value = self.inner_collection.iter().nth(self.index).cloned();
+        let value = self.inner_collection.iter().nth(self.index);
         if value.is_some() {
             self.index += 1;
         }
@@ -213,24 +212,22 @@ impl ExactSizeIterator for Iter {}
 #[cfg(test)]
 mod tests {
     use near_sdk::{
-        borsh::{self, BorshSerialize},
-        near_bindgen,
-        test_utils::VMContextBuilder,
-        testing_env, AccountId, BorshStorageKey,
+        near, test_utils::VMContextBuilder, testing_env, AccountId, BorshStorageKey, PanicOnDefault,
     };
     use near_sdk_contract_tools_macros::Rbac;
 
     use super::Rbac;
 
-    #[derive(BorshSerialize, BorshStorageKey)]
+    #[derive(BorshStorageKey)]
+    #[near]
     enum Role {
         A,
         B,
     }
 
-    #[derive(Rbac)]
+    #[derive(Rbac, PanicOnDefault)]
     #[rbac(roles = "Role", crate = "crate")]
-    #[near_bindgen]
+    #[near(contract_state)]
     struct Contract {}
 
     #[test]
@@ -246,7 +243,7 @@ mod tests {
         let mut r = Contract {};
         let a: AccountId = "account".parse().unwrap();
 
-        r.add_role(a.clone(), &Role::A);
+        r.add_role(&a, &Role::A);
 
         assert!(Contract::has_role(&a, &Role::A));
         assert!(!Contract::has_role(&a, &Role::B));
@@ -257,8 +254,8 @@ mod tests {
         let mut r = Contract {};
         let a: AccountId = "account".parse().unwrap();
 
-        r.add_role(a.clone(), &Role::B);
-        r.add_role(a.clone(), &Role::A);
+        r.add_role(&a, &Role::B);
+        r.add_role(&a, &Role::A);
 
         assert!(Contract::has_role(&a, &Role::A));
         assert!(Contract::has_role(&a, &Role::B));
@@ -275,10 +272,10 @@ mod tests {
         let a: AccountId = "account_a".parse().unwrap();
         let b: AccountId = "account_b".parse().unwrap();
 
-        r.add_role(a.clone(), &Role::B);
-        r.add_role(a.clone(), &Role::A);
-        r.add_role(b.clone(), &Role::B);
-        r.add_role(b.clone(), &Role::A);
+        r.add_role(&a, &Role::B);
+        r.add_role(&a, &Role::A);
+        r.add_role(&b, &Role::B);
+        r.add_role(&b, &Role::A);
 
         assert!(Contract::has_role(&a, &Role::A));
         assert!(Contract::has_role(&a, &Role::B));
@@ -299,7 +296,7 @@ mod tests {
         let mut r = Contract {};
         let a: AccountId = "account".parse().unwrap();
 
-        r.add_role(a.clone(), &Role::A);
+        r.add_role(&a, &Role::A);
 
         testing_env!(VMContextBuilder::new().predecessor_account_id(a).build());
 
@@ -312,7 +309,7 @@ mod tests {
         let mut r = Contract {};
         let a: AccountId = "account".parse().unwrap();
 
-        r.add_role(a.clone(), &Role::A);
+        r.add_role(&a, &Role::A);
 
         testing_env!(VMContextBuilder::new().predecessor_account_id(a).build());
 
@@ -335,7 +332,7 @@ mod tests {
         let mut r = Contract {};
         let a: AccountId = "account".parse().unwrap();
 
-        r.add_role(a.clone(), &Role::A);
+        r.add_role(&a, &Role::A);
 
         testing_env!(VMContextBuilder::new().predecessor_account_id(a).build());
 
@@ -347,7 +344,7 @@ mod tests {
         let mut r = Contract {};
         let a: AccountId = "account".parse().unwrap();
 
-        r.add_role(a.clone(), &Role::A);
+        r.add_role(&a, &Role::A);
 
         testing_env!(VMContextBuilder::new().predecessor_account_id(a).build());
 

@@ -1,12 +1,9 @@
-use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    log, near_bindgen, PanicOnDefault,
-};
+use near_sdk::{log, near, PanicOnDefault};
 use near_sdk_contract_tools::{hook::Hook, nft::*};
 
-#[derive(BorshSerialize, BorshDeserialize, PanicOnDefault, Nep171)]
+#[derive(Nep171, PanicOnDefault)]
 #[nep171(transfer_hook = "Self")]
-#[near_bindgen]
+#[near(contract_state)]
 pub struct Contract {
     transfer_count: u32,
 }

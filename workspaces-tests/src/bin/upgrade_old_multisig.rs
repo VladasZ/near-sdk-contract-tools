@@ -1,13 +1,6 @@
-#![allow(missing_docs)]
-pub fn main() {}
-use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    env,
-    json_types::Base64VecU8,
-    near_bindgen,
-    serde::{Deserialize, Serialize},
-    BorshStorageKey, PanicOnDefault,
-};
+workspaces_tests::predicate!();
+
+use near_sdk::{env, json_types::Base64VecU8, near, BorshStorageKey, PanicOnDefault};
 use near_sdk_contract_tools::{
     approval::{self, ApprovalManager},
     owner::*,
@@ -15,13 +8,14 @@ use near_sdk_contract_tools::{
     Owner, Rbac, SimpleMultisig, Upgrade,
 };
 
-#[derive(BorshStorageKey, BorshSerialize, Debug, Clone)]
+#[derive(BorshStorageKey, Debug, Clone)]
+#[near]
 pub enum Role {
     Multisig,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug, Clone)]
-#[serde(crate = "near_sdk::serde")]
+#[derive(Debug, Clone)]
+#[near(serializers = [borsh, json])]
 pub enum ContractAction {
     Upgrade { code: Base64VecU8 },
 }
@@ -36,26 +30,16 @@ impl approval::Action<Contract> for ContractAction {
     }
 }
 
-#[derive(
-    BorshSerialize,
-    BorshDeserialize,
-    PanicOnDefault,
-    Owner,
-    Debug,
-    Clone,
-    Rbac,
-    Upgrade,
-    SimpleMultisig,
-)]
+#[derive(Owner, Debug, Clone, Rbac, Upgrade, SimpleMultisig, PanicOnDefault)]
 #[rbac(roles = "Role")]
 #[simple_multisig(role = "Role::Multisig", action = "ContractAction")]
 #[upgrade(serializer = "borsh", hook = "owner")]
-#[near_bindgen]
+#[near(contract_state)]
 pub struct Contract {
     pub foo: u32,
 }
 
-#[near_bindgen]
+#[near]
 impl Contract {
     #[init]
     pub fn new() -> Self {
@@ -69,7 +53,7 @@ impl Contract {
 
         Owner::init(&mut contract, &predecessor);
 
-        contract.add_role(predecessor, &Role::Multisig);
+        contract.add_role(&predecessor, &Role::Multisig);
 
         contract
     }

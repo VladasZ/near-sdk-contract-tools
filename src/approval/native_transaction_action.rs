@@ -3,17 +3,15 @@
 //! transfer)
 
 use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    json_types::{Base64VecU8, U128, U64},
-    serde::{Deserialize, Serialize},
-    AccountId, Gas, Promise,
+    json_types::{Base64VecU8, U64},
+    near, AccountId, Gas, NearToken, Promise,
 };
 
 /// Every native NEAR action can be mapped to a Promise action.
 /// NOTE: The native ADD_KEY action is split into two: one for adding a
 /// full-access key, one for a function call access key.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
-#[serde(crate = "near_sdk::serde")]
+#[derive(Clone, Debug, Eq, PartialEq)]
+#[near(serializers = [borsh, json])]
 pub enum PromiseAction {
     /// Native CREATE_ACCOUNT action
     CreateAccount,
@@ -29,19 +27,19 @@ pub enum PromiseAction {
         /// Function input (optional)
         arguments: Base64VecU8,
         /// Attached deposit
-        amount: U128,
+        amount: NearToken,
         /// Attached gas
-        gas: U64,
+        gas: Gas,
     },
     /// Native TRANSFER action
     Transfer {
         /// Amount of NEAR tokens to transfer to receiver
-        amount: U128,
+        amount: NearToken,
     },
     /// Native STAKE action
     Stake {
         /// Amount of tokens to stake
-        amount: U128,
+        amount: NearToken,
         /// Public key of validator node
         public_key: String,
     },
@@ -57,7 +55,7 @@ pub enum PromiseAction {
         /// Public key to add to account
         public_key: String,
         /// Gas allowance
-        allowance: U128,
+        allowance: NearToken,
         /// Target contract account ID
         receiver_id: AccountId,
         /// Restrict this key to calls to these functions
@@ -79,8 +77,8 @@ pub enum PromiseAction {
 
 /// A native protocol-level transaction that (de)serializes into many different
 /// formats
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Eq, PartialEq, Clone, Debug)]
-#[serde(crate = "near_sdk::serde")]
+#[derive(Eq, PartialEq, Clone, Debug)]
+#[near(serializers = [borsh, json])]
 pub struct NativeTransactionAction {
     /// Receiver of the transaction
     pub receiver_id: AccountId,
@@ -103,9 +101,10 @@ impl<C> super::Action<C> for NativeTransactionAction {
                     receiver_id,
                     function_names,
                     nonce,
-                } => promise.add_access_key_with_nonce(
+                } => promise.add_access_key_allowance_with_nonce(
                     public_key.parse().unwrap(),
-                    allowance.into(),
+                    near_sdk::Allowance::limited(allowance)
+                        .unwrap_or(near_sdk::Allowance::Unlimited),
                     receiver_id,
                     function_names.join(","),
                     nonce.map(Into::into).unwrap_or(0),
@@ -122,15 +121,10 @@ impl<C> super::Action<C> for NativeTransactionAction {
                     arguments,
                     amount,
                     gas,
-                } => promise.function_call(
-                    function_name,
-                    arguments.0,
-                    amount.into(),
-                    Gas(gas.into()),
-                ),
-                PromiseAction::Transfer { amount } => promise.transfer(amount.into()),
+                } => promise.function_call(function_name, arguments.0, amount, gas),
+                PromiseAction::Transfer { amount } => promise.transfer(amount),
                 PromiseAction::Stake { amount, public_key } => {
-                    promise.stake(amount.into(), public_key.parse().unwrap())
+                    promise.stake(amount, public_key.parse().unwrap())
                 }
                 PromiseAction::DeleteKey { public_key } => {
                     promise.delete_key(public_key.parse().unwrap())

@@ -1,6 +1,6 @@
 //! Utility functions for storage key generation, storage fee management
 
-use near_sdk::{env, require, Promise};
+use near_sdk::{env, require, NearToken, Promise};
 
 /// Concatenate bytes to form a key. Useful for generating storage keys.
 ///
@@ -39,7 +39,7 @@ pub fn prefix_key(prefix: &[u8], key: &[u8]) -> Vec<u8> {
 /// near_sdk::env::storage_write(b"key", b"value");
 ///
 /// near_sdk::testing_env!(near_sdk::test_utils::VMContextBuilder::new()
-///     .attached_deposit(near_sdk::ONE_NEAR)
+///     .attached_deposit(near_sdk::NearToken::from_near(1))
 ///     .build());
 /// // Attached deposit must cover storage fee or this function will panic
 /// apply_storage_fee_and_refund(initial_storage_usage, additional_fees);
@@ -51,13 +51,18 @@ pub fn apply_storage_fee_and_refund(
     // Storage consumption after storage event
     let storage_usage_end = env::storage_usage();
 
+    let storage_byte_cost = env::storage_byte_cost();
+
     // Storage fee incurred by storage event, clamped >= 0
-    let storage_fee = u128::from(storage_usage_end.saturating_sub(initial_storage_usage))
-        * env::storage_byte_cost();
+    let storage_fee = storage_byte_cost
+        .checked_mul(u128::from(
+            storage_usage_end.saturating_sub(initial_storage_usage),
+        ))
+        .unwrap_or_else(|| env::panic_str("Storage fee overflows"));
 
     let total_required_deposit = storage_fee
-        .checked_add(additional_fees)
-        .expect("Required deposit overflows u128");
+        .checked_add(NearToken::from_yoctonear(additional_fees))
+        .unwrap_or_else(|| env::panic_str("Required deposit overflows u128"));
 
     let attached_deposit = env::attached_deposit();
 
@@ -68,10 +73,10 @@ pub fn apply_storage_fee_and_refund(
         )
     );
 
-    let refund = attached_deposit - total_required_deposit;
+    let refund = attached_deposit.saturating_sub(total_required_deposit);
 
     // Send refund transfer if required
-    if refund > 0 {
+    if !refund.is_zero() {
         Some(Promise::new(env::predecessor_account_id()).transfer(refund))
     } else {
         None
@@ -81,10 +86,11 @@ pub fn apply_storage_fee_and_refund(
 /// Asserts that the attached deposit is greater than zero.
 pub fn assert_nonzero_deposit() {
     require!(
-        env::attached_deposit() > 0,
+        !env::attached_deposit().is_zero(),
         "Attached deposit must be greater than zero"
     );
 }
+
 #[cfg(test)]
 mod tests {
     use super::prefix_key;

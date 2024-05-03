@@ -8,7 +8,7 @@
 //! # Warning
 //!
 //! Functions in this module are generally _not callable_ from any call tree
-//! originating from a function annotated by `#[near_bindgen]`.
+//! originating from a function annotated by `#[near]`.
 
 use near_sdk::{env, sys};
 
@@ -18,7 +18,7 @@ use super::PostUpgrade;
 /// This function automatically sets the return value of the function call to
 /// the contract deployment &rarr; migrate function call promise, so the
 /// contract should not try to return any other values. This also means that
-/// this function probably should not be called from a `#[near_bindgen]`
+/// this function probably should not be called from a `#[near]`
 /// context, since the macro may automatically set a different return value.
 ///
 /// # Safety
@@ -37,6 +37,8 @@ pub unsafe fn upgrade(post_upgrade: PostUpgrade) {
     // Deploy the contract code
     sys::promise_batch_action_deploy_contract(promise_id, u64::MAX, 0);
 
+    let gas = post_upgrade.minimum_gas.as_gas();
+
     // Call promise to migrate the state.
     // Batched together to fail upgrade if migration fails.
     sys::promise_batch_action_function_call_weight(
@@ -46,7 +48,7 @@ pub unsafe fn upgrade(post_upgrade: PostUpgrade) {
         post_upgrade.args.len() as u64,
         post_upgrade.args.as_ptr() as u64,
         0,
-        post_upgrade.minimum_gas.0,
+        gas,
         u64::MAX,
     );
 

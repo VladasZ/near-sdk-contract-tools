@@ -1,11 +1,6 @@
-#![allow(missing_docs)]
+workspaces_tests::predicate!();
 
-use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    env, near_bindgen,
-    serde::Serialize,
-    BorshStorageKey, PanicOnDefault,
-};
+use near_sdk::{env, near, BorshStorageKey, PanicOnDefault};
 use near_sdk_contract_tools::{
     approval::{simple_multisig::Configuration, *},
     rbac::Rbac,
@@ -14,13 +9,13 @@ use near_sdk_contract_tools::{
 use std::string::ToString;
 use strum_macros::Display;
 
-#[derive(BorshSerialize, BorshStorageKey, Clone, Debug, Display)]
+#[derive(BorshStorageKey, Clone, Debug, Display)]
+#[near]
 pub enum Role {
     Member,
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize)]
-#[serde(crate = "near_sdk::serde")]
+#[near(serializers = [borsh, json])]
 pub enum CounterAction {
     Increment,
     Decrement,
@@ -47,15 +42,15 @@ impl Action<Contract> for CounterAction {
     }
 }
 
-#[derive(BorshSerialize, BorshDeserialize, PanicOnDefault, Rbac, SimpleMultisig)]
+#[derive(Rbac, SimpleMultisig, PanicOnDefault)]
 #[simple_multisig(action = "CounterAction", role = "Role::Member")]
 #[rbac(roles = "Role")]
-#[near_bindgen]
+#[near(contract_state)]
 pub struct Contract {
     pub counter: u32,
 }
 
-#[near_bindgen]
+#[near]
 impl Contract {
     const THRESHOLD: u8 = 2;
     const VALIDITY_PERIOD_NANOSECONDS: u64 = 1_000_000 * 1_000 * 60 * 60 * 24 * 7;
@@ -71,7 +66,7 @@ impl Contract {
     }
 
     pub fn obtain_multisig_permission(&mut self) {
-        self.add_role(env::predecessor_account_id(), &Role::Member);
+        self.add_role(&env::predecessor_account_id(), &Role::Member);
     }
 
     pub fn request_increment(&mut self) -> u32 {
@@ -95,7 +90,7 @@ impl Contract {
     pub fn approve(&mut self, request_id: u32) {
         self.approve_request(request_id)
             .map_err(|e| env::panic_str(&e.to_string()))
-            .unwrap()
+            .unwrap();
     }
 
     pub fn get_request(
@@ -119,5 +114,3 @@ impl Contract {
         self.counter
     }
 }
-
-pub fn main() {} // Ignore

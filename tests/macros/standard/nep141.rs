@@ -1,17 +1,12 @@
 use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    collections::Vector,
-    env,
-    json_types::U128,
-    log, near_bindgen,
-    test_utils::VMContextBuilder,
-    testing_env, AccountId, PromiseOrValue,
+    borsh, collections::Vector, env, json_types::U128, log, near, test_utils::VMContextBuilder,
+    testing_env, AccountId, NearToken, PanicOnDefault, PromiseOrValue,
 };
 use near_sdk_contract_tools::{hook::Hook, standard::nep141::*, Nep141};
 
-#[derive(Nep141, BorshDeserialize, BorshSerialize)]
+#[derive(Nep141, PanicOnDefault)]
 #[nep141(transfer_hook = "TransferHook")]
-#[near_bindgen]
+#[near(contract_state)]
 struct FungibleToken {
     pub transfers: Vector<Vec<u8>>,
     pub hooks: Vector<String>,
@@ -30,36 +25,39 @@ impl Hook<FungibleToken, Nep141Transfer<'_>> for TransferHook {
         contract.hooks.push(&"before_transfer".to_string());
         let r = f(contract);
         contract.hooks.push(&"after_transfer".to_string());
-        contract
-            .transfers
-            .push(&BorshSerialize::try_to_vec(&args).unwrap());
+        contract.transfers.push(&borsh::to_vec(&args).unwrap());
         let storage_usage_end = env::storage_usage();
         println!("Storage delta: {}", storage_usage_end - storage_usage_start);
         r
     }
 }
 
-#[near_bindgen]
-struct FungibleTokenReceiver {
-    pub log: Vector<(String, u128)>,
-}
+mod receiver {
+    use super::*;
 
-impl near_sdk_contract_tools::standard::nep141::Nep141Receiver for FungibleTokenReceiver {
-    fn ft_on_transfer(
-        &mut self,
-        sender_id: AccountId,
-        amount: U128,
-        msg: String,
-    ) -> PromiseOrValue<U128> {
-        let used_amount: u128 = amount.0 / 2;
+    #[derive(PanicOnDefault)]
+    #[near(contract_state)]
+    struct FungibleTokenReceiver {
+        pub log: Vector<(String, u128)>,
+    }
 
-        let out = format!("ft_on_transfer[from={sender_id}, used={used_amount}]");
-        log!(&out);
-        println!("{out}");
+    impl near_sdk_contract_tools::standard::nep141::Nep141Receiver for FungibleTokenReceiver {
+        fn ft_on_transfer(
+            &mut self,
+            sender_id: AccountId,
+            amount: U128,
+            msg: String,
+        ) -> PromiseOrValue<U128> {
+            let used_amount: u128 = amount.0 / 2;
 
-        self.log.push(&(msg, amount.0));
+            let out = format!("ft_on_transfer[from={sender_id}, used={used_amount}]");
+            log!(&out);
+            println!("{out}");
 
-        PromiseOrValue::Value(U128(used_amount))
+            self.log.push(&(msg, amount.0));
+
+            PromiseOrValue::Value(U128(used_amount))
+        }
     }
 }
 
@@ -87,7 +85,7 @@ fn nep141_transfer() {
 
     let context = VMContextBuilder::new()
         .predecessor_account_id(alice.clone())
-        .attached_deposit(1)
+        .attached_deposit(NearToken::from_yoctonear(1u128))
         .build();
 
     testing_env!(context);
@@ -97,15 +95,14 @@ fn nep141_transfer() {
     assert_eq!(
         ft.transfers.pop(),
         Some(
-            Nep141Transfer {
+            borsh::to_vec(&Nep141Transfer {
                 sender_id: &alice,
                 receiver_id: &bob,
                 amount: 50,
                 memo: None,
                 msg: None,
                 revert: false,
-            }
-            .try_to_vec()
+            })
             .unwrap()
         )
     );

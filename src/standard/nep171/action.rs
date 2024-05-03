@@ -4,14 +4,12 @@
 //! implementing [`Hook`]s for the NEP-171 component.
 
 use super::*;
-use near_sdk::{
-    borsh::{self, BorshSerialize},
-    serde::Serialize,
-};
+use near_sdk::{borsh::BorshSerialize, serde::Serialize};
 
 /// NEP-171 mint action.
-#[derive(Clone, Debug, Serialize, BorshSerialize, PartialEq, Eq)]
+#[derive(Serialize, BorshSerialize, Clone, Debug, PartialEq, Eq)]
 #[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
 pub struct Nep171Mint<'a> {
     /// Token IDs to mint.
     pub token_ids: &'a [TokenId],
@@ -22,8 +20,9 @@ pub struct Nep171Mint<'a> {
 }
 
 /// NEP-171 burn action.
-#[derive(Clone, Debug, Serialize, BorshSerialize, PartialEq, Eq)]
+#[derive(Serialize, BorshSerialize, Clone, Debug, PartialEq, Eq)]
 #[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
 pub struct Nep171Burn<'a> {
     /// Token IDs to burn.
     pub token_ids: &'a [TokenId],
@@ -37,6 +36,7 @@ pub struct Nep171Burn<'a> {
 /// `nft_transfer_call`).
 #[derive(Serialize, BorshSerialize, PartialEq, Eq, Clone, Debug, Hash)]
 #[serde(crate = "near_sdk::serde")]
+#[borsh(crate = "near_sdk::borsh")]
 pub struct Nep171Transfer<'a> {
     /// Why is this sender allowed to perform this transfer?
     pub authorization: Nep171TransferAuthorization,

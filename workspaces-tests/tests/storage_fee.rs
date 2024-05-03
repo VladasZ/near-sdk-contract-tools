@@ -1,7 +1,6 @@
-#![cfg(not(windows))]
-
-use near_sdk::{json_types::U128, serde_json::json, ONE_NEAR};
-use near_workspaces::{sandbox, Account, Contract, DevNetwork, Worker};
+use near_sdk::serde_json::json;
+use near_workspaces::{sandbox, types::NearToken, Account, Contract, DevNetwork, Worker};
+use workspaces_tests_utils::ONE_NEAR;
 
 const WASM: &[u8] = include_bytes!("../../target/wasm32-unknown-unknown/release/storage_fee.wasm");
 
@@ -44,14 +43,15 @@ async fn storage_fee() {
         .view("storage_byte_cost")
         .await
         .unwrap()
-        .json::<U128>()
-        .unwrap()
-        .0;
+        .json::<NearToken>()
+        .unwrap();
 
-    let num_bytes: usize = (ONE_NEAR / byte_cost).try_into().unwrap();
-    let payload = "0".repeat(num_bytes);
+    let num_bytes = NearToken::from_near(1)
+        .as_yoctonear()
+        .saturating_div(byte_cost.as_yoctonear());
+    let payload = "0".repeat(usize::try_from(num_bytes).unwrap());
     // This is the absolute minimum this payload should require to store (uncompressed)
-    let minimum_storage_fee = num_bytes as u128 * byte_cost;
+    let minimum_storage_fee = byte_cost.saturating_mul(num_bytes);
     let gas_price = worker.gas_price().await.unwrap();
 
     let go = || async {
@@ -62,7 +62,7 @@ async fn storage_fee() {
             .args_json(json!({
                 "item": payload,
             }))
-            .deposit(ONE_NEAR * 10) // Should receive back about 9 NEAR as refund
+            .deposit(ONE_NEAR.saturating_mul(10)) // Should receive back about 9 NEAR as refund
             .transact()
             .await
             .unwrap()
@@ -72,11 +72,14 @@ async fn storage_fee() {
 
         // How much was actually charged to the account?
         // Note that there will be *some* overhead, e.g. collection indexing
-        let net_fee =
-            balance_before - balance_after - (r.total_gas_burnt.as_gas() as u128 * gas_price);
+        let net_fee = balance_before
+            .saturating_sub(balance_after)
+            .saturating_sub(gas_price.saturating_mul(r.total_gas_burnt.as_gas() as u128));
 
         assert!(net_fee >= minimum_storage_fee);
-        assert!(net_fee - minimum_storage_fee < byte_cost * 100); // Sanity/validity check / allow up to 100 bytes worth of additional storage to be charged
+
+        // Sanity/validity check / allow up to 100 bytes worth of additional storage to be charged
+        assert!(net_fee.saturating_sub(minimum_storage_fee) < byte_cost.saturating_mul(100));
     };
 
     for _ in 0..5 {
@@ -84,5 +87,5 @@ async fn storage_fee() {
     }
 
     let balance_end = alice.view_account().await.unwrap().balance;
-    assert!(balance_start - balance_end >= minimum_storage_fee * 5);
+    assert!(balance_start.saturating_sub(balance_end) >= minimum_storage_fee.saturating_mul(5));
 }

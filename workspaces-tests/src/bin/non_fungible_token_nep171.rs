@@ -1,17 +1,11 @@
-#![allow(missing_docs)]
+workspaces_tests::predicate!();
 
-// Ignore
-pub fn main() {}
-
-use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    env, log, near_bindgen, PanicOnDefault,
-};
+use near_sdk::{env, log, near, PanicOnDefault};
 use near_sdk_contract_tools::{hook::Hook, standard::nep171::*, Nep171};
 
-#[derive(PanicOnDefault, BorshSerialize, BorshDeserialize, Nep171)]
+#[derive(Nep171, PanicOnDefault)]
 #[nep171(transfer_hook = "Self")]
-#[near_bindgen]
+#[near(contract_state)]
 pub struct Contract {}
 
 impl Hook<Contract, action::Nep171Transfer<'_>> for Contract {
@@ -27,7 +21,7 @@ impl Hook<Contract, action::Nep171Transfer<'_>> for Contract {
     }
 }
 
-#[near_bindgen]
+#[near]
 impl Contract {
     #[init]
     pub fn new() -> Self {

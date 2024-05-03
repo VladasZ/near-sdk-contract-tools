@@ -13,8 +13,7 @@
 use crate::{event, standard::nep297::Event};
 use crate::{slot::Slot, DefaultStorageKey};
 use near_sdk::{
-    borsh::BorshSerialize,
-    borsh::{self, BorshDeserialize},
+    borsh::{BorshDeserialize, BorshSerialize},
     env::panic_str,
     require,
     serde::Serialize,
@@ -26,6 +25,7 @@ const ESCROW_NOT_LOCKED_MESSAGE: &str = "Lock required";
 const ESCROW_UNLOCK_HANDLER_FAILED_MESSAGE: &str = "Unlock handler failed";
 
 #[derive(BorshSerialize, BorshStorageKey)]
+#[borsh(crate = "near_sdk::borsh")]
 enum StorageKey<'a, T> {
     Locked(&'a T),
 }
@@ -166,20 +166,21 @@ mod tests {
     use super::Escrow;
     use crate::escrow::EscrowInternal;
     use near_sdk::{
-        near_bindgen, test_utils::VMContextBuilder, testing_env, AccountId, Balance, VMContext,
-        ONE_YOCTO,
+        near, test_utils::VMContextBuilder, testing_env, AccountId, NearToken, PanicOnDefault,
+        VMContext,
     };
     use near_sdk_contract_tools_macros::Escrow;
 
     const ID: u64 = 1;
     const IS_NOT_READY: bool = false;
+    const ONE_YOCTO: u128 = 1;
 
-    #[derive(Escrow)]
+    #[derive(Escrow, PanicOnDefault)]
     #[escrow(id = "u64", state = "bool", crate = "crate")]
-    #[near_bindgen]
+    #[near(contract_state)]
     struct Contract {}
 
-    #[near_bindgen]
+    #[near]
     impl Contract {
         #[init]
         pub fn new() -> Self {
@@ -191,11 +192,11 @@ mod tests {
         "alice".parse().unwrap()
     }
 
-    fn get_context(attached_deposit: Balance, signer: Option<AccountId>) -> VMContext {
+    fn get_context(attached_deposit: u128, signer: Option<AccountId>) -> VMContext {
         VMContextBuilder::new()
             .signer_account_id(signer.clone().unwrap_or_else(alice))
             .predecessor_account_id(signer.unwrap_or_else(alice))
-            .attached_deposit(attached_deposit)
+            .attached_deposit(NearToken::from_yoctonear(attached_deposit))
             .is_view(false)
             .build()
     }

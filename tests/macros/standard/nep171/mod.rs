@@ -1,9 +1,6 @@
 #![allow(dead_code)]
 
-use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    env, near_bindgen, store, AccountId, ONE_NEAR,
-};
+use near_sdk::{env, near, store, AccountId, PanicOnDefault};
 use near_sdk_contract_tools::{hook::Hook, nft::*};
 
 mod hooks;
@@ -11,7 +8,8 @@ mod manual_integration;
 mod no_hooks;
 mod non_fungible_token;
 
-#[derive(BorshDeserialize, BorshSerialize, Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[near]
 struct TokenRecord {
     owner_id: AccountId,
     token_id: TokenId,
@@ -26,35 +24,42 @@ impl From<Token> for TokenRecord {
     }
 }
 
-#[derive(NonFungibleToken, BorshDeserialize, BorshSerialize)]
-#[near_bindgen]
-struct NonFungibleTokenNoHooks {
-    pub before_nft_transfer_balance_record: store::Vector<Option<TokenRecord>>,
-    pub after_nft_transfer_balance_record: store::Vector<Option<TokenRecord>>,
+mod full_no_hooks {
+    use near_sdk::NearToken;
+
+    use super::*;
+
+    #[derive(NonFungibleToken, PanicOnDefault)]
+    #[near(contract_state)]
+    struct NonFungibleTokenNoHooks {
+        pub before_nft_transfer_balance_record: store::Vector<Option<TokenRecord>>,
+        pub after_nft_transfer_balance_record: store::Vector<Option<TokenRecord>>,
+    }
+
+    #[test]
+    fn nft_no_hooks() {
+        let mut n = NonFungibleTokenNoHooks {
+            before_nft_transfer_balance_record: store::Vector::new(b"a"),
+            after_nft_transfer_balance_record: store::Vector::new(b"b"),
+        };
+
+        let token_id = "token1".to_string();
+        let alice: AccountId = "alice".parse().unwrap();
+
+        Nep145Controller::deposit_to_storage_account(&mut n, &alice, NearToken::from_near(1))
+            .unwrap();
+
+        n.mint_with_metadata(token_id.clone(), alice, TokenMetadata::new().title("Title"))
+            .unwrap();
+
+        let nft_tok = n.nft_token(token_id);
+        dbg!(nft_tok);
+    }
 }
 
-#[test]
-fn t() {
-    let mut n = NonFungibleTokenNoHooks {
-        before_nft_transfer_balance_record: store::Vector::new(b"a"),
-        after_nft_transfer_balance_record: store::Vector::new(b"b"),
-    };
-
-    let token_id = "token1".to_string();
-    let alice: AccountId = "alice".parse().unwrap();
-
-    Nep145Controller::deposit_to_storage_account(&mut n, &alice, ONE_NEAR.into()).unwrap();
-
-    n.mint_with_metadata(token_id.clone(), alice, TokenMetadata::new().title("Title"))
-        .unwrap();
-
-    let nft_tok = n.nft_token(token_id);
-    dbg!(nft_tok);
-}
-
-#[derive(Nep171, BorshDeserialize, BorshSerialize)]
+#[derive(Nep171, PanicOnDefault)]
 #[nep171(transfer_hook = "Self")]
-#[near_bindgen]
+#[near(contract_state)]
 struct NonFungibleToken {
     pub before_nft_transfer_balance_record: store::Vector<Option<TokenRecord>>,
     pub after_nft_transfer_balance_record: store::Vector<Option<TokenRecord>>,
@@ -79,7 +84,7 @@ impl Hook<NonFungibleToken, Nep171Transfer<'_>> for NonFungibleToken {
     }
 }
 
-#[near_bindgen]
+#[near]
 impl NonFungibleToken {
     #[init]
     pub fn new() -> Self {
@@ -104,7 +109,7 @@ impl NonFungibleToken {
 mod tests {
     use near_sdk::{
         test_utils::{get_logs, VMContextBuilder},
-        testing_env, AccountId,
+        testing_env, AccountId, NearToken,
     };
     use near_sdk_contract_tools::standard::{
         nep171::{
@@ -138,7 +143,7 @@ mod tests {
 
         testing_env!(VMContextBuilder::new()
             .predecessor_account_id(account_alice.clone())
-            .attached_deposit(1)
+            .attached_deposit(NearToken::from_yoctonear(1u128))
             .build());
 
         contract.nft_transfer(account_bob.clone(), token_id.to_string(), None, None);

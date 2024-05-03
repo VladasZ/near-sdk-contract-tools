@@ -1,19 +1,13 @@
-#![allow(missing_docs)]
+workspaces_tests::predicate!();
 
 use std::str::FromStr;
 
 use near_sdk_contract_tools::{rbac::Rbac, Rbac};
 
-use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    env, near_bindgen,
-    serde::Serialize,
-    AccountId, BorshStorageKey, PanicOnDefault,
-};
+use near_sdk::{env, near, AccountId, BorshStorageKey, PanicOnDefault};
 
-pub fn main() {}
-
-#[derive(BorshSerialize, BorshStorageKey)]
+#[derive(BorshStorageKey)]
+#[near]
 pub enum Role {
     Alpha,
     Beta,
@@ -35,10 +29,9 @@ impl FromStr for Role {
     }
 }
 
-#[derive(BorshSerialize, BorshDeserialize, Serialize, PanicOnDefault, Rbac)]
+#[derive(Rbac, PanicOnDefault)]
 #[rbac(roles = "Role")]
-#[serde(crate = "near_sdk::serde")]
-#[near_bindgen]
+#[near(contract_state, serializers = [borsh, json])]
 pub struct Contract {
     pub alpha: u32,
     pub beta: u32,
@@ -46,7 +39,7 @@ pub struct Contract {
     pub delta: u32,
 }
 
-#[near_bindgen]
+#[near]
 impl Contract {
     #[init]
     pub fn new() -> Self {
@@ -61,7 +54,7 @@ impl Contract {
     pub fn acquire_role(&mut self, role: String) {
         let role: Role = Role::from_str(&role).expect("Invalid role identifier");
         let predecessor = env::predecessor_account_id();
-        self.add_role(predecessor, &role);
+        self.add_role(&predecessor, &role);
     }
 
     pub fn members(&self, role: String) -> Vec<AccountId> {
@@ -94,7 +87,7 @@ impl Contract {
         self.delta += 1;
     }
 
-    pub fn get(&self) -> &Self {
-        self
+    pub fn get(&self) -> near_sdk::serde_json::Value {
+        near_sdk::serde_json::to_value(self).unwrap()
     }
 }

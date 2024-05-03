@@ -4,7 +4,13 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
-[target.'cfg(not(windows))'.dependencies]
-near-sdk.workspace = true
-near-workspaces = "0.8"
+[dependencies]
+near-sdk = { workspace = true, default-features = false }
+near-sdk-contract-tools = { path = "../", default-features = false, features = [
+    "unstable",
+] }
+near-workspaces.workspace = true
 pretty_assertions.workspace = true
+
+[features]
+unstable = ["near-sdk/unstable"]

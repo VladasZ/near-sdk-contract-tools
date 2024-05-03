@@ -1,17 +1,12 @@
-#![allow(missing_docs)]
+workspaces_tests::predicate!();
 
-use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    near_bindgen, PanicOnDefault,
-};
+use near_sdk::{near, PanicOnDefault};
 
-pub fn main() {} // Ignore
-
-#[derive(PanicOnDefault, BorshSerialize, BorshDeserialize)]
-#[near_bindgen]
+#[derive(PanicOnDefault)]
+#[near(contract_state)]
 pub struct Contract {}
 
-#[near_bindgen]
+#[near]
 impl Contract {
     #[init]
     pub fn new() -> Self {

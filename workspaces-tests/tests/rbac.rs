@@ -1,5 +1,3 @@
-#![cfg(not(windows))]
-
 use std::collections::HashSet;
 
 use near_sdk::{

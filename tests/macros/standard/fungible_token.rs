@@ -1,11 +1,11 @@
-use near_sdk::{json_types::Base64VecU8, near_bindgen};
+use near_sdk::{json_types::Base64VecU8, near, PanicOnDefault};
 use near_sdk_contract_tools::ft::*;
 
-#[derive(FungibleToken)]
-#[near_bindgen]
+#[derive(FungibleToken, PanicOnDefault)]
+#[near(contract_state)]
 struct MyFungibleTokenContract {}
 
-#[near_bindgen]
+#[near]
 impl MyFungibleTokenContract {
     #[init]
     pub fn new() -> Self {
@@ -25,7 +25,7 @@ impl MyFungibleTokenContract {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use near_sdk::{test_utils::VMContextBuilder, testing_env, AccountId, ONE_NEAR};
+    use near_sdk::{test_utils::VMContextBuilder, testing_env, AccountId, NearToken};
 
     #[test]
     fn fungible_token_transfer() {
@@ -36,14 +36,14 @@ mod tests {
 
         let context = VMContextBuilder::new()
             .predecessor_account_id(alice.clone())
-            .attached_deposit(ONE_NEAR / 100)
+            .attached_deposit(NearToken::from_near(1u128).saturating_div(100))
             .build();
         testing_env!(context);
         ft.storage_deposit(None, None);
 
         let context = VMContextBuilder::new()
             .predecessor_account_id(bob.clone())
-            .attached_deposit(ONE_NEAR / 100)
+            .attached_deposit(NearToken::from_near(1u128).saturating_div(100))
             .build();
         testing_env!(context);
         ft.storage_deposit(None, None);
@@ -61,7 +61,7 @@ mod tests {
 
         let context = VMContextBuilder::new()
             .predecessor_account_id(alice.clone())
-            .attached_deposit(1)
+            .attached_deposit(NearToken::from_yoctonear(1u128))
             .build();
 
         testing_env!(context);

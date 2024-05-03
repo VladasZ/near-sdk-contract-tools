@@ -1,19 +1,13 @@
-#![allow(missing_docs)]
+workspaces_tests::predicate!();
 
-// Ignore
-pub fn main() {}
+use near_sdk::{env, log, near, AccountId, NearToken, PanicOnDefault, PromiseOrValue};
+use near_sdk_contract_tools::standard::nep171::*;
 
-use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    env, log, near_bindgen, AccountId, PanicOnDefault, PromiseOrValue,
-};
-use near_sdk_contract_tools::standard::nep171::{ext_nep171, *};
-
-#[derive(PanicOnDefault, BorshSerialize, BorshDeserialize)]
-#[near_bindgen]
+#[derive(PanicOnDefault)]
+#[near(contract_state)]
 pub struct Contract {}
 
-#[near_bindgen]
+#[near]
 impl Nep171Receiver for Contract {
     fn nft_on_transfer(
         &mut self,
@@ -34,7 +28,7 @@ impl Nep171Receiver for Contract {
         } else if let Some(account_id) = msg.strip_prefix("transfer:") {
             log!("Transferring {} to {}", token_id, account_id);
             return ext_nep171::ext(env::predecessor_account_id())
-                .with_attached_deposit(1)
+                .with_attached_deposit(NearToken::from_yoctonear(1u128))
                 .nft_transfer(account_id.parse().unwrap(), token_id, None, None)
                 .then(Contract::ext(env::current_account_id()).return_true()) // ask to return the token even though we don't own it anymore
                 .into();
@@ -44,7 +38,7 @@ impl Nep171Receiver for Contract {
     }
 }
 
-#[near_bindgen]
+#[near]
 impl Contract {
     #[init]
     pub fn new() -> Self {

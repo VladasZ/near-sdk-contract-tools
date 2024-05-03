@@ -1,13 +1,7 @@
 //! NEP-148 fungible token metadata implementation
 //! <https://github.com/near/NEPs/blob/master/neps/nep-0148.md>
 
-use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    env,
-    json_types::Base64VecU8,
-    serde::{Deserialize, Serialize},
-    BorshStorageKey,
-};
+use near_sdk::{env, json_types::Base64VecU8, near, BorshStorageKey};
 
 use crate::{slot::Slot, DefaultStorageKey};
 
@@ -19,8 +13,8 @@ pub const FT_METADATA_SPEC: &str = "ft-1.0.0";
 pub const ERR_METADATA_UNSET: &str = "NEP-148 metadata is not set";
 
 /// NEP-148-compatible metadata struct
-#[derive(BorshDeserialize, BorshSerialize, Deserialize, Serialize, Eq, PartialEq, Clone, Debug)]
-#[serde(crate = "near_sdk::serde")]
+#[derive(Eq, PartialEq, Clone, Debug)]
+#[near(serializers = [borsh, json])]
 pub struct FungibleTokenMetadata {
     /// Version of the NEP-148 spec
     pub spec: String,
@@ -98,7 +92,8 @@ impl FungibleTokenMetadata {
     }
 }
 
-#[derive(BorshSerialize, BorshStorageKey)]
+#[derive(BorshStorageKey)]
+#[near]
 enum StorageKey {
     Metadata,
 }

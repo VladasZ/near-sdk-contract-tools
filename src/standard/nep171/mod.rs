@@ -40,7 +40,8 @@
 use std::error::Error;
 
 use near_sdk::{
-    borsh::{self, BorshSerialize},
+    borsh::BorshSerialize,
+    near,
     serde::{Deserialize, Serialize},
     AccountId, BorshStorageKey, Gas,
 };
@@ -60,9 +61,10 @@ pub use ext::*;
 pub mod hooks;
 
 /// Minimum required gas for [`Nep171Resolver::nft_resolve_transfer`] call in promise chain during [`Nep171::nft_transfer_call`].
-pub const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas(5_000_000_000_000);
+pub const GAS_FOR_RESOLVE_TRANSFER: Gas = Gas::from_gas(5_000_000_000_000);
 /// Minimum gas required to execute the main body of [`Nep171::nft_transfer_call`] + gas for [`Nep171Resolver::nft_resolve_transfer`].
-pub const GAS_FOR_NFT_TRANSFER_CALL: Gas = Gas(25_000_000_000_000 + GAS_FOR_RESOLVE_TRANSFER.0);
+pub const GAS_FOR_NFT_TRANSFER_CALL: Gas =
+    Gas::from_gas(25_000_000_000_000 + GAS_FOR_RESOLVE_TRANSFER.as_gas());
 /// Error message when insufficient gas is attached to function calls with a minimum attached gas requirement (i.e. those that produce a promise chain, perform cross-contract calls).
 pub const INSUFFICIENT_GAS_MESSAGE: &str = "More gas is required";
 
@@ -70,6 +72,7 @@ pub const INSUFFICIENT_GAS_MESSAGE: &str = "More gas is required";
 pub type TokenId = String;
 
 #[derive(BorshSerialize, BorshStorageKey)]
+#[borsh(crate = "near_sdk::borsh")]
 enum StorageKey<'a> {
     TokenOwner(&'a str),
 }
@@ -181,8 +184,8 @@ pub trait Nep171Controller {
 }
 
 /// Authorization for a transfer.
-#[derive(Serialize, BorshSerialize, PartialEq, Eq, Clone, Debug, Hash)]
-#[serde(crate = "near_sdk::serde")]
+#[derive(PartialEq, Eq, Clone, Debug, Hash)]
+#[near(serializers = [borsh, json])]
 pub enum Nep171TransferAuthorization {
     /// The sender is the owner of the token.
     Owner,

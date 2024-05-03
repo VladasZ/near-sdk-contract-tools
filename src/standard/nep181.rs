@@ -3,12 +3,7 @@
 //! Reference: <https://github.com/near/NEPs/blob/master/neps/nep-0181.md>
 use std::borrow::Cow;
 
-use near_sdk::{
-    borsh::{self, BorshSerialize},
-    env,
-    store::UnorderedSet,
-    AccountId, BorshStorageKey,
-};
+use near_sdk::{borsh::BorshSerialize, collections::UnorderedSet, env, AccountId, BorshStorageKey};
 
 use crate::{hook::Hook, slot::Slot, standard::nep171::*, DefaultStorageKey};
 
@@ -59,6 +54,7 @@ impl<C: Nep171Controller + Nep181Controller> Hook<C, action::Nep171Burn<'_>> for
 }
 
 #[derive(BorshSerialize, BorshStorageKey)]
+#[borsh(crate = "near_sdk::borsh")]
 enum StorageKey<'a> {
     Tokens,
     OwnerTokens(&'a AccountId),

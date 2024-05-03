@@ -62,9 +62,17 @@ name = "upgrade_old_multisig"
 [[bin]]
 name = "upgrade_old_raw"
 
+[lints.clippy]
+# pedantic = "warn"
+new-without-default = "allow"
+# must-use-candidate = "allow"
+# missing-panics-doc = "allow"
+
 [dependencies]
 near-sdk.workspace = true
-near-sdk-contract-tools = { path = "../", features = ["unstable"] }
+near-sdk-contract-tools = { path = "../", default-features = false, features = [
+    "unstable",
+] }
 strum.workspace = true
 strum_macros.workspace = true
 thiserror.workspace = true
@@ -73,7 +81,10 @@ thiserror.workspace = true
 near-crypto.workspace = true
 tokio.workspace = true
 pretty_assertions.workspace = true
+near-workspaces = { workspace = true, features = ["unstable"] }
+workspaces-tests-utils = { path = "../workspaces-tests-utils", default-features = false, features = [
+    "unstable",
+] }
 
-[target.'cfg(not(windows))'.dev-dependencies]
-near-workspaces.workspace = true
-workspaces-tests-utils = { path = "../workspaces-tests-utils" }
+[features]
+unstable = ["near-sdk/unstable"]

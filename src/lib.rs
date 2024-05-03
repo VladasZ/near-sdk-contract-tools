@@ -1,7 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]
 
-use near_sdk::IntoStorageKey;
 pub use near_sdk_contract_tools_macros::*;
 
 /// Default storage keys used by various traits' `root()` functions.
@@ -33,7 +32,7 @@ pub enum DefaultStorageKey {
     Escrow,
 }
 
-impl IntoStorageKey for DefaultStorageKey {
+impl near_sdk::IntoStorageKey for DefaultStorageKey {
     fn into_storage_key(self) -> Vec<u8> {
         match self {
             DefaultStorageKey::ApprovalManager => b"~am".to_vec(),

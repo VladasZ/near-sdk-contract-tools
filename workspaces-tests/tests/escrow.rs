@@ -1,5 +1,3 @@
-#![cfg(not(windows))]
-
 use near_sdk::{
     serde::{Deserialize, Serialize},
     serde_json::{self, json},

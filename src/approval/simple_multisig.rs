@@ -3,12 +3,7 @@
 
 use std::marker::PhantomData;
 
-use near_sdk::{
-    borsh::{self, BorshDeserialize, BorshSerialize},
-    env,
-    serde::{Deserialize, Serialize},
-    AccountId,
-};
+use near_sdk::{env, near, AccountId};
 use thiserror::Error;
 
 use super::{ActionRequest, ApprovalConfiguration};
@@ -24,8 +19,8 @@ pub trait AccountAuthorizer {
 }
 
 /// M (threshold) of N approval scheme
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Clone, Debug)]
-#[serde(crate = "near_sdk::serde")]
+#[derive(Clone, Debug)]
+#[near(serializers = [borsh, json])]
 pub struct Configuration<Au: AccountAuthorizer> {
     /// How many approvals are required?
     pub threshold: u8,
@@ -33,7 +28,7 @@ pub struct Configuration<Au: AccountAuthorizer> {
     /// approval-eligible member after this period has elapsed.
     /// 0 = perpetual validity, no deletion
     pub validity_period_nanoseconds: u64,
-    #[borsh_skip]
+    #[borsh(skip)]
     #[serde(skip)]
     _authorizer: PhantomData<Au>,
 }
@@ -62,8 +57,8 @@ impl<Au: AccountAuthorizer> Configuration<Au> {
 }
 
 /// Approval state for simple multisig
-#[derive(BorshSerialize, BorshDeserialize, Serialize, Deserialize, Debug)]
-#[serde(crate = "near_sdk::serde")]
+#[derive(Clone, Debug)]
+#[near(serializers = [borsh, json])]
 pub struct ApprovalState {
     /// List of accounts that have approved an action thus far
     pub approved_by: Vec<AccountId>,
@@ -209,10 +204,8 @@ pub mod macro_types {
 #[cfg(test)]
 mod tests {
     use near_sdk::{
-        borsh::{self, BorshDeserialize, BorshSerialize},
-        env, near_bindgen,
-        test_utils::VMContextBuilder,
-        testing_env, AccountId, BorshStorageKey,
+        env, near, test_utils::VMContextBuilder, testing_env, AccountId, BorshStorageKey,
+        PanicOnDefault,
     };
     use thiserror::Error;
 
@@ -226,7 +219,7 @@ mod tests {
         Rbac,
     };
 
-    #[derive(BorshSerialize, BorshDeserialize)]
+    #[near]
     enum Action {
         SayHello,
         SayGoodbye,
@@ -243,14 +236,15 @@ mod tests {
         }
     }
 
-    #[derive(BorshSerialize, BorshStorageKey)]
+    #[derive(BorshStorageKey)]
+    #[near]
     enum Role {
         Multisig,
     }
 
-    #[derive(Rbac, Debug, BorshSerialize, BorshDeserialize)]
+    #[derive(Rbac, Debug, PanicOnDefault)]
     #[rbac(roles = "Role", crate = "crate")]
-    #[near_bindgen]
+    #[near(contract_state)]
     struct Contract {}
 
     impl ApprovalManagerInternal<Action, ApprovalState, Configuration<Self>> for Contract {
@@ -275,7 +269,7 @@ mod tests {
         }
     }
 
-    #[near_bindgen]
+    #[near]
     impl Contract {
         #[init]
         pub fn new() -> Self {
@@ -284,7 +278,7 @@ mod tests {
         }
 
         pub fn obtain_multisig_permission(&mut self) {
-            self.add_role(env::predecessor_account_id(), &Role::Multisig);
+            self.add_role(&env::predecessor_account_id(), &Role::Multisig);
         }
 
         pub fn create(&mut self, say_hello: bool) -> u32 {

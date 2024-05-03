@@ -6,17 +6,18 @@ use std::marker::PhantomData;
 
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
-    env, IntoStorageKey,
+    env, near, IntoStorageKey,
 };
 
 use crate::utils::prefix_key;
 
+#[derive(Clone, Debug)]
+#[near]
 /// A storage slot, composed of a storage location (key) and a data type
-#[derive(BorshSerialize, BorshDeserialize, Clone, Debug)]
 pub struct Slot<T> {
     /// The storage key this slot controls
     pub key: Vec<u8>,
-    #[borsh_skip]
+    #[borsh(skip)]
     _marker: PhantomData<T>,
 }
 
@@ -96,7 +97,7 @@ impl<T> Slot<T> {
 impl<T: BorshSerialize> Slot<T> {
     /// Writes a value to the managed storage slot
     pub fn write(&mut self, value: &T) -> bool {
-        self.write_raw(&value.try_to_vec().unwrap())
+        self.write_raw(&{ borsh::to_vec(&value) }.unwrap())
     }
 
     /// If the given value is `Some(T)`, writes `T` to storage. Otherwise,
@@ -129,7 +130,9 @@ impl<T: BorshDeserialize> Slot<T> {
 impl<T: BorshSerialize + BorshDeserialize> Slot<T> {
     /// Writes a value to storage and returns the evicted value, if present.
     pub fn swap(&mut self, value: &T) -> Option<T> {
-        if self.write_raw(&value.try_to_vec().unwrap()) {
+        let v = borsh::to_vec(&value).unwrap();
+
+        if self.write_raw(&v) {
             // unwrap should be safe because write_raw returned true
             Some(T::try_from_slice(&env::storage_get_evicted().unwrap()).unwrap())
         } else {

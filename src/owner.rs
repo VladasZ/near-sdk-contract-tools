@@ -31,10 +31,7 @@
 //! * (ERR) The external functions exposed in [`OwnerExternal`] call their
 //!   respective [`Owner`] methods and expect the same invariants.
 
-use near_sdk::{
-    borsh::{self, BorshSerialize},
-    env, require, AccountId, BorshStorageKey,
-};
+use near_sdk::{env, near, require, AccountId, BorshStorageKey};
 use near_sdk_contract_tools_macros::event;
 
 use crate::{slot::Slot, standard::nep297::Event, DefaultStorageKey};
@@ -70,7 +67,8 @@ pub enum OwnerEvent {
     },
 }
 
-#[derive(BorshSerialize, BorshStorageKey, Debug, Clone)]
+#[derive(BorshStorageKey, Debug, Clone)]
+#[near]
 enum StorageKey {
     IsInitialized,
     Owner,
@@ -124,15 +122,16 @@ pub trait Owner {
     /// # Examples
     ///
     /// ```
-    /// use near_sdk::{AccountId, near_bindgen};
+    /// use near_sdk::{AccountId, near, PanicOnDefault};
     /// use near_sdk_contract_tools::{Owner, owner::Owner};
     ///
-    /// #[derive(Owner)]
-    /// #[near_bindgen]
+    /// #[derive(Owner, PanicOnDefault)]
+    /// #[near(contract_state)]
     /// struct Contract {}
     ///
-    /// #[near_bindgen]
+    /// #[near]
     /// impl Contract {
+    ///     #[init]
     ///     pub fn new(owner_id: AccountId) -> Self {
     ///         let mut contract = Self {};
     ///
@@ -149,14 +148,14 @@ pub trait Owner {
     /// # Examples
     ///
     /// ```
-    /// use near_sdk::{AccountId, near_bindgen};
+    /// use near_sdk::{AccountId, near, PanicOnDefault};
     /// use near_sdk_contract_tools::{Owner, owner::Owner};
     ///
-    /// #[derive(Owner)]
-    /// #[near_bindgen]
+    /// #[derive(Owner, PanicOnDefault)]
+    /// #[near(contract_state)]
     /// struct Contract {}
     ///
-    /// #[near_bindgen]
+    /// #[near]
     /// impl Contract {
     ///     pub fn owner_only(&self) {
     ///         Self::require_owner();
@@ -352,19 +351,21 @@ pub use ext::*;
 
 #[cfg(test)]
 mod tests {
-    use near_sdk::{near_bindgen, test_utils::VMContextBuilder, testing_env, AccountId};
+    use near_sdk::{
+        near, test_utils::VMContextBuilder, testing_env, AccountId, NearToken, PanicOnDefault,
+    };
 
     use crate::{
         owner::{Owner, OwnerExternal},
         Owner,
     };
 
-    #[derive(Owner)]
+    #[derive(Owner, PanicOnDefault)]
     #[owner(crate = "crate")]
-    #[near_bindgen]
+    #[near(contract_state)]
     struct Contract {}
 
-    #[near_bindgen]
+    #[near]
     impl Contract {
         #[init]
         pub fn new(owner_id: AccountId) -> Self {
@@ -417,7 +418,7 @@ mod tests {
         assert_eq!(contract.own_get_owner(), Some(owner_id.clone()));
         testing_env!(VMContextBuilder::new()
             .predecessor_account_id(owner_id)
-            .attached_deposit(1)
+            .attached_deposit(NearToken::from_yoctonear(1u128))
             .build());
         contract.own_renounce_owner();
         assert_eq!(contract.own_get_owner(), None);
@@ -432,7 +433,7 @@ mod tests {
 
         testing_env!(VMContextBuilder::new()
             .predecessor_account_id(owner_id)
-            .attached_deposit(1)
+            .attached_deposit(NearToken::from_yoctonear(1u128))
             .build());
 
         assert_eq!(contract.own_get_proposed_owner(), None);
@@ -452,7 +453,7 @@ mod tests {
 
         testing_env!(VMContextBuilder::new()
             .predecessor_account_id(proposed_owner.clone())
-            .attached_deposit(1)
+            .attached_deposit(NearToken::from_yoctonear(1u128))
             .build());
 
         contract.own_propose_owner(Some(proposed_owner));
@@ -483,14 +484,14 @@ mod tests {
 
         testing_env!(VMContextBuilder::new()
             .predecessor_account_id(owner_id)
-            .attached_deposit(1)
+            .attached_deposit(NearToken::from_yoctonear(1u128))
             .build());
 
         contract.own_propose_owner(Some(proposed_owner.clone()));
 
         testing_env!(VMContextBuilder::new()
             .predecessor_account_id(proposed_owner.clone())
-            .attached_deposit(1)
+            .attached_deposit(NearToken::from_yoctonear(1u128))
             .build());
 
         contract.own_accept_owner();
@@ -510,7 +511,7 @@ mod tests {
 
         testing_env!(VMContextBuilder::new()
             .predecessor_account_id(owner_id)
-            .attached_deposit(1)
+            .attached_deposit(NearToken::from_yoctonear(1u128))
             .build());
 
         contract.own_propose_owner(Some(proposed_owner));
@@ -519,7 +520,7 @@ mod tests {
 
         testing_env!(VMContextBuilder::new()
             .predecessor_account_id(third_party)
-            .attached_deposit(1)
+            .attached_deposit(NearToken::from_yoctonear(1u128))
             .build());
 
         contract.own_accept_owner();
@@ -536,7 +537,7 @@ mod tests {
 
         testing_env!(VMContextBuilder::new()
             .predecessor_account_id(owner_id)
-            .attached_deposit(1)
+            .attached_deposit(NearToken::from_yoctonear(1u128))
             .build());
 
         contract.own_propose_owner(Some(proposed_owner.clone()));
@@ -561,6 +562,7 @@ mod tests {
         assert_eq!(contract.own_get_owner(), Some(new_owner));
         assert_eq!(contract.own_get_proposed_owner(), None);
     }
+
     #[test]
     fn update_proposed_unchecked() {
         let owner_id: AccountId = "owner".parse().unwrap();
