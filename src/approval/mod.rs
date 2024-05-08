@@ -26,35 +26,51 @@ pub trait Action<Cont: ?Sized> {
     fn execute(self, contract: &mut Cont) -> Self::Output;
 }
 
-/// Defines the operating parameters for an ApprovalManager and performs
-/// approvals
+/// Defines the operating parameters for an `ApprovalManager` and performs
+/// approvals.
 pub trait ApprovalConfiguration<A, S> {
-    /// Errors when approving a request
+    /// Errors when approving a request.
     type ApprovalError;
-    /// Errors when removing a request
+    /// Errors when removing a request.
     type RemovalError;
-    /// Errors when authorizing an account
+    /// Errors when authorizing an account.
     type AuthorizationError;
-    /// Errors when evaluating a request for execution candidacy
+    /// Errors when evaluating a request for execution candidacy.
     type ExecutionEligibilityError;
 
     /// Has the request reached full approval?
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request is not approved for execution.
     fn is_approved_for_execution(
         &self,
         action_request: &ActionRequest<A, S>,
     ) -> Result<(), Self::ExecutionEligibilityError>;
 
     /// Can this request be removed by an allowed account?
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request cannot be removed.
     fn is_removable(&self, action_request: &ActionRequest<A, S>) -> Result<(), Self::RemovalError>;
 
     /// Is the account allowed to execute, approve, or remove this request?
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the account is not allowed to perform such an action.
     fn is_account_authorized(
         &self,
         account_id: &AccountId,
         action_request: &ActionRequest<A, S>,
     ) -> Result<(), Self::AuthorizationError>;
 
-    /// Modify action_request.approval_state in-place to increase approval
+    /// Modify `action_request.approval_state` in-place to increase approval.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the request cannot be approved.
     fn try_approve_with_authorized_account(
         &self,
         account_id: AccountId,
@@ -135,22 +151,26 @@ where
     C: ApprovalConfiguration<A, S> + BorshDeserialize + BorshSerialize,
 {
     /// Storage root
+    #[must_use]
     fn root() -> Slot<()> {
         Slot::new(DefaultStorageKey::ApprovalManager)
     }
 
     /// Because requests will be deleted from the requests collection,
     /// maintain a simple counter to guarantee unique IDs
+    #[must_use]
     fn slot_next_request_id() -> Slot<u32> {
         Self::root().field(ApprovalStorageKey::NextRequestId)
     }
 
     /// Approval context included in relevant approval-related calls
+    #[must_use]
     fn slot_config() -> Slot<C> {
         Self::root().field(ApprovalStorageKey::Config)
     }
 
     /// Current list of pending action requests.
+    #[must_use]
     fn slot_request(request_id: u32) -> Slot<ActionRequest<A, S>> {
         Self::root().field(ApprovalStorageKey::Request(request_id))
     }
@@ -175,7 +195,11 @@ where
     /// once.
     fn init(config: C);
 
-    /// Creates a new action request initialized with the given approval state
+    /// Creates a new action request initialized with the given approval state.
+    ///
+    /// # Errors
+    ///
+    /// - If the acting account is unauthorized.
     fn create_request(
         &mut self,
         action: A,
@@ -184,6 +208,11 @@ where
 
     /// Executes an action request and removes it from the collection if the
     /// approval state of the request is fulfilled.
+    ///
+    /// # Errors
+    ///
+    /// - If the acting account is unauthorized.
+    /// - If the request is ineligible for execution.
     fn execute_request(
         &mut self,
         request_id: u32,
@@ -191,16 +220,30 @@ where
 
     /// Is the given request ID able to be executed if such a request were to
     /// be initiated by an authorized account?
+    ///
+    /// # Errors
+    ///
+    /// - If the request is ineligible for execution.
     fn is_approved_for_execution(request_id: u32) -> Result<(), C::ExecutionEligibilityError>;
 
     /// Tries to approve the action request designated by the given request ID
     /// with the given arguments. Panics if the request ID does not exist.
+    ///
+    /// # Errors
+    ///
+    /// - If the acting account is unauthorized.
+    /// - If another error was encountered when approving the request.
     fn approve_request(
         &mut self,
         request_id: u32,
     ) -> Result<(), ApprovalError<C::AuthorizationError, C::ApprovalError>>;
 
-    /// Tries to remove the action request indicated by request_id.
+    /// Tries to remove the action request indicated by `request_id`.
+    ///
+    /// # Errors
+    ///
+    /// - If the acting account is unauthorized.
+    /// - If the request cannot be removed.
     fn remove_request(
         &mut self,
         request_id: u32,
@@ -495,7 +538,7 @@ mod tests {
 
         predecessor(&alice);
         let request_id = contract
-            .create_request(MyAction::SayHello, Default::default())
+            .create_request(MyAction::SayHello, MultisigApprovalState::default())
             .unwrap();
 
         assert_eq!(request_id, 0);
@@ -524,7 +567,7 @@ mod tests {
 
         predecessor(&alice);
         let request_id = contract
-            .create_request(MyAction::SayHello, Default::default())
+            .create_request(MyAction::SayHello, MultisigApprovalState::default())
             .unwrap();
 
         contract.approve_request(request_id).unwrap();
@@ -544,7 +587,7 @@ mod tests {
         predecessor(&alice);
 
         let request_id = contract
-            .create_request(MyAction::SayHello, Default::default())
+            .create_request(MyAction::SayHello, MultisigApprovalState::default())
             .unwrap();
 
         contract.approve_request(request_id).unwrap();
@@ -565,7 +608,7 @@ mod tests {
         predecessor(&alice);
 
         let request_id = contract
-            .create_request(MyAction::SayHello, Default::default())
+            .create_request(MyAction::SayHello, MultisigApprovalState::default())
             .unwrap();
 
         contract.approve_request(request_id).unwrap();
@@ -589,7 +632,7 @@ mod tests {
 
         predecessor(&alice);
         let request_id = contract
-            .create_request(MyAction::SayGoodbye, Default::default())
+            .create_request(MyAction::SayGoodbye, MultisigApprovalState::default())
             .unwrap();
 
         contract.approve_request(request_id).unwrap();

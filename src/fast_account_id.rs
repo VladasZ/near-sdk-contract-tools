@@ -28,6 +28,7 @@ pub struct FastAccountId(Rc<str>);
 
 impl FastAccountId {
     /// Creates a new `FastAccountId` from a `&str` without performing any checks.
+    #[must_use]
     pub fn new_unchecked(account_id: &str) -> Self {
         Self(Rc::from(account_id))
     }
@@ -77,6 +78,8 @@ impl TryFrom<&str> for FastAccountId {
 
 impl BorshSerialize for FastAccountId {
     fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        // A valid NEAR account ID cannot be longer than 64.
+        #[allow(clippy::cast_possible_truncation)]
         let len: u8 = self.0.len() as u8;
         writer.write_all(&[len])?;
         let compressed = compress_account_id(&self.0).ok_or(std::io::ErrorKind::InvalidData)?;
@@ -161,6 +164,8 @@ fn compress_account_id(account_id: &str) -> Option<Vec<u8>> {
 
     let mut i = 0;
     for c in account_id.as_bytes() {
+        // ALPHABET is not that long.
+        #[allow(clippy::cast_possible_truncation)]
         let index = char_index(*c)? as u8;
         append_sub_byte(&mut v, i, index, 6);
         i += 6;
@@ -191,18 +196,18 @@ mod tests {
         append_sub_byte(&mut v, 0, 0b111, 3);
         append_sub_byte(&mut v, 3, 0b010, 3);
         append_sub_byte(&mut v, 6, 0b110, 3);
-        append_sub_byte(&mut v, 9, 0b1110101, 7);
+        append_sub_byte(&mut v, 9, 0b111_0101, 7);
 
-        assert_eq!(v, vec![0b10010111, 0b11101011]);
+        assert_eq!(v, vec![0b1001_0111, 0b1110_1011]);
     }
 
     #[test]
     fn test_read_sub_byte() {
-        let v = vec![0b10010111, 0b11101011];
+        let v = vec![0b1001_0111, 0b1110_1011];
         assert_eq!(read_sub_byte(&v, 0, 3), 0b111);
         assert_eq!(read_sub_byte(&v, 3, 3), 0b010);
         assert_eq!(read_sub_byte(&v, 6, 3), 0b110);
-        assert_eq!(read_sub_byte(&v, 9, 7), 0b1110101);
+        assert_eq!(read_sub_byte(&v, 9, 7), 0b111_0101);
     }
 
     #[test]

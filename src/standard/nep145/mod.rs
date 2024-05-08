@@ -53,6 +53,7 @@ pub struct StorageBalanceBounds {
 
 impl StorageBalanceBounds {
     /// Restricts a balance to be within the bounds.
+    #[must_use]
     pub fn bound(&self, balance: NearToken, registration_only: bool) -> NearToken {
         if registration_only {
             self.min
@@ -98,16 +99,19 @@ pub trait Nep145ControllerInternal {
         Self: Sized;
 
     /// Root storage slot.
+    #[must_use]
     fn root() -> Slot<()> {
         Slot::new(DefaultStorageKey::Nep145)
     }
 
     /// Storage slot for balance bounds.
+    #[must_use]
     fn slot_balance_bounds() -> Slot<StorageBalanceBounds> {
         Slot::new(StorageKey::BalanceBounds)
     }
 
     /// Storage slot for individual account balance.
+    #[must_use]
     fn slot_account(account_id: &AccountIdRef) -> Slot<StorageBalance> {
         Slot::new(StorageKey::Account(account_id))
     }
@@ -122,12 +126,21 @@ pub trait Nep145Controller {
         Self: Sized;
 
     /// Returns the storage balance of the given account.
+    ///
+    /// # Errors
+    ///
+    /// - If the account is not registered.
     fn get_storage_balance(
         &self,
         account_id: &AccountIdRef,
     ) -> Result<StorageBalance, AccountNotRegisteredError>;
 
     /// Locks the given amount of storage balance for the given account.
+    ///
+    /// # Errors
+    ///
+    /// - If the account is not registered.
+    /// - If the account's balance is too low.
     fn lock_storage(
         &mut self,
         account_id: &AccountIdRef,
@@ -135,6 +148,11 @@ pub trait Nep145Controller {
     ) -> Result<StorageBalance, StorageLockError>;
 
     /// Unlocks the given amount of storage balance for the given account.
+    ///
+    /// # Errors
+    ///
+    /// - If the account is not registered.
+    /// - If the account attempts to unlock more tokens than are deposited.
     fn unlock_storage(
         &mut self,
         account_id: &AccountIdRef,
@@ -142,6 +160,11 @@ pub trait Nep145Controller {
     ) -> Result<StorageBalance, StorageUnlockError>;
 
     /// Deposits the given amount of storage balance for the given account.
+    ///
+    /// # Errors
+    ///
+    /// - If the account balance would be less than the minimum balance.
+    /// - If the account balance would be greater than the maximum balance.
     fn deposit_to_storage_account(
         &mut self,
         account_id: &AccountIdRef,
@@ -149,6 +172,12 @@ pub trait Nep145Controller {
     ) -> Result<StorageBalance, StorageDepositError>;
 
     /// Withdraws the given amount of storage balance for the given account.
+    ///
+    /// # Errors
+    ///
+    /// - If the account is not registered.
+    /// - If the account attempts to withdraw more tokens than are deposited.
+    /// - If the account balance would be less than the minimum balance.
     fn withdraw_from_storage_account(
         &mut self,
         account_id: &AccountIdRef,
@@ -157,6 +186,11 @@ pub trait Nep145Controller {
 
     /// Unregisters the given account, returning the amount of storage balance
     /// that should be refunded.
+    ///
+    /// # Errors
+    ///
+    /// - If the account is not registered.
+    /// - If the account still has a locked balance.
     fn unregister_storage_account(
         &mut self,
         account_id: &AccountIdRef,
@@ -164,6 +198,10 @@ pub trait Nep145Controller {
 
     /// Force unregisters the given account, returning the amount of storage balance
     /// that should be refunded.
+    ///
+    /// # Errors
+    ///
+    /// - If the account is not registered.
     fn force_unregister_storage_account(
         &mut self,
         account_id: &AccountIdRef,
@@ -177,6 +215,10 @@ pub trait Nep145Controller {
 
     /// Convenience method for performing storage accounting, to be used after
     /// storage writes that are to be debited from the account's balance.
+    ///
+    /// # Errors
+    ///
+    /// See: [`lock_storage`](Nep145Controller::lock_storage) and [`unlock_storage`](Nep145Controller::unlock_storage).
     fn storage_accounting(
         &mut self,
         account_id: &AccountIdRef,

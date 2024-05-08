@@ -129,16 +129,19 @@ pub trait Nep178ControllerInternal {
         Self: Sized;
 
     /// Storage root.
+    #[must_use]
     fn root() -> Slot<()> {
         Slot::root(DefaultStorageKey::Nep178)
     }
 
     /// Storage slot for token approvals.
+    #[must_use]
     fn slot_token_approvals(token_id: &TokenId) -> Slot<TokenApprovals> {
         Self::root().field(StorageKey::TokenApprovals(token_id))
     }
 
     /// Storage slot for token approvals `UnorderedMap`.
+    #[must_use]
     fn slot_token_approvals_unordered_map(
         token_id: &TokenId,
     ) -> Slot<UnorderedMap<AccountId, ApprovalId>> {
@@ -162,6 +165,12 @@ pub trait Nep178Controller {
         Self: Sized;
 
     /// Approve a token for transfer by a delegated account.
+    ///
+    /// # Errors
+    ///
+    /// - If the acting account is not authorized to create approvals for the token.
+    /// - If the target account is already approved for the token.
+    /// - If the token exceeds the maximum number of approvals.
     fn approve(&mut self, action: &Nep178Approve<'_>) -> Result<ApprovalId, Nep178ApproveError>;
 
     /// Approve a token without checking if the account is already approved or
@@ -169,6 +178,11 @@ pub trait Nep178Controller {
     fn approve_unchecked(&mut self, token_id: &TokenId, account_id: &AccountIdRef) -> ApprovalId;
 
     /// Revoke approval for an account to transfer token.
+    ///
+    /// # Errors
+    ///
+    /// - If the acting account is not authorized to revoke approvals for the token.
+    /// - If the target account is not approved for the token.
     fn revoke(&mut self, action: &Nep178Revoke<'_>) -> Result<(), Nep178RevokeError>;
 
     /// Revoke approval for an account to transfer token without checking if
@@ -176,6 +190,10 @@ pub trait Nep178Controller {
     fn revoke_unchecked(&mut self, token_id: &TokenId, account_id: &AccountIdRef);
 
     /// Revoke all approvals for a token.
+    ///
+    /// # Errors
+    ///
+    /// - If the acting account is not authorized to revoke approvals for the token.
     fn revoke_all(&mut self, action: &Nep178RevokeAll<'_>) -> Result<(), Nep178RevokeAllError>;
 
     /// Revoke all approvals for a token without checking current owner.
@@ -260,9 +278,8 @@ impl<T: Nep178ControllerInternal + Nep171Controller> Nep178Controller for T {
 
     fn revoke_unchecked(&mut self, token_id: &TokenId, account_id: &AccountIdRef) {
         let mut slot = Self::slot_token_approvals(token_id);
-        let mut approvals = match slot.read() {
-            Some(approvals) => approvals,
-            None => return,
+        let Some(mut approvals) = slot.read() else {
+            return;
         };
 
         let old = approvals.accounts.remove(&account_id.into());
@@ -329,9 +346,8 @@ impl<T: Nep178ControllerInternal + Nep171Controller> Nep178Controller for T {
 
     fn revoke_all_unchecked(&mut self, token_id: &TokenId) {
         let mut slot = Self::slot_token_approvals(token_id);
-        let mut approvals = match slot.read() {
-            Some(approvals) => approvals,
-            None => return,
+        let Some(mut approvals) = slot.read() else {
+            return;
         };
 
         if !approvals.accounts.is_empty() {
@@ -353,9 +369,8 @@ impl<T: Nep178ControllerInternal + Nep171Controller> Nep178Controller for T {
 
     fn get_approvals_for(&self, token_id: &TokenId) -> HashMap<AccountId, ApprovalId> {
         let slot = Self::slot_token_approvals(token_id);
-        let approvals = match slot.read() {
-            Some(approvals) => approvals,
-            None => return HashMap::default(),
+        let Some(approvals) = slot.read() else {
+            return HashMap::default();
         };
 
         approvals.accounts.into_iter().collect()

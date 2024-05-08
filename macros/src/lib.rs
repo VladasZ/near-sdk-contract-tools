@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_lines, clippy::unnecessary_wraps)]
 //! Macros for near-sdk-contract-tools.
 
 use darling::{ast::NestedMeta, FromDeriveInput, FromMeta};
@@ -45,8 +46,7 @@ where
 
     FromDeriveInput::from_derive_input(&input)
         .and_then(expand)
-        .map(Into::into)
-        .unwrap_or_else(|e| e.write_errors().into())
+        .map_or_else(|e| e.write_errors().into(), Into::into)
 }
 
 /// Use on a struct to emit NEP-297 event strings.
@@ -257,9 +257,8 @@ pub fn event(attr: TokenStream, item: TokenStream) -> TokenStream {
     let item = parse_macro_input!(item as Item);
 
     standard::event::EventAttributeMeta::from_list(&attr)
-        .and_then(|meta| standard::event::event_attribute(meta, item))
-        .map(Into::into)
-        .unwrap_or_else(|e| e.write_errors().into())
+        .and_then(|meta| standard::event::event_attribute(meta, &item))
+        .map_or_else(|e| e.write_errors().into(), Into::into)
 }
 
 /// Create an upgrade component. Does not expose any functions to the

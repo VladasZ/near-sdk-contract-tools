@@ -55,7 +55,7 @@ impl Contract {
         let storage_fee = env::storage_byte_cost().saturating_mul(u128::from(storage_usage));
 
         Nep145Controller::lock_storage(self, &predecessor, storage_fee)
-            .unwrap_or_else(|e| env::panic_str(&format!("Storage lock error: {}", e)));
+            .unwrap_or_else(|e| env::panic_str(&format!("Storage lock error: {e}")));
     }
 }
 
@@ -158,6 +158,7 @@ mod tests {
             .predecessor_account_id(alice())
             .build());
 
+        #[allow(clippy::cast_possible_truncation)]
         contract.use_storage(
             one_near
                 .as_yoctonear()

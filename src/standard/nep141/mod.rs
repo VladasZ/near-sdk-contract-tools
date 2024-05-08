@@ -70,6 +70,7 @@ impl<'a> Nep141Transfer<'a> {
     }
 
     /// Add a memo string.
+    #[must_use]
     pub fn memo(self, memo: impl Into<Cow<'a, str>>) -> Self {
         Self {
             memo: Some(memo.into()),
@@ -78,6 +79,7 @@ impl<'a> Nep141Transfer<'a> {
     }
 
     /// Add a message string.
+    #[must_use]
     pub fn msg(self, msg: impl Into<Cow<'a, str>>) -> Self {
         Self {
             msg: Some(msg.into()),
@@ -87,6 +89,7 @@ impl<'a> Nep141Transfer<'a> {
 
     /// Returns `true` if this transfer comes from a `ft_transfer_call`
     /// call, `false` otherwise.
+    #[must_use]
     pub fn is_transfer_call(&self) -> bool {
         self.msg.is_some()
     }
@@ -115,6 +118,7 @@ impl<'a> Nep141Mint<'a> {
     }
 
     /// Add a memo string.
+    #[must_use]
     pub fn memo(self, memo: impl Into<Cow<'a, str>>) -> Self {
         Self {
             memo: Some(memo.into()),
@@ -146,6 +150,7 @@ impl<'a> Nep141Burn<'a> {
     }
 
     /// Add a memo string.
+    #[must_use]
     pub fn memo(self, memo: impl Into<Cow<'a, str>>) -> Self {
         Self {
             memo: Some(memo.into()),
@@ -170,16 +175,19 @@ pub trait Nep141ControllerInternal {
         Self: Sized;
 
     /// Root storage slot.
+    #[must_use]
     fn root() -> Slot<()> {
         Slot::new(DefaultStorageKey::Nep141)
     }
 
     /// Slot for account data.
+    #[must_use]
     fn slot_account(account_id: &AccountIdRef) -> Slot<u128> {
         Self::root().field(StorageKey::Account(account_id))
     }
 
     /// Slot for storing total supply.
+    #[must_use]
     fn slot_total_supply() -> Slot<u128> {
         Self::root().field(StorageKey::TotalSupply)
     }
@@ -208,6 +216,11 @@ pub trait Nep141Controller {
 
     /// Removes tokens from an account and decreases total supply. No event
     /// emission or hook invocation.
+    ///
+    /// # Errors
+    ///
+    /// - Account balance underflow.
+    /// - Total supply underflow.
     fn withdraw_unchecked(
         &mut self,
         account_id: &AccountIdRef,
@@ -216,6 +229,11 @@ pub trait Nep141Controller {
 
     /// Increases the token balance of an account. Updates total supply. No
     /// event emission or hook invocation.
+    ///
+    /// # Errors
+    ///
+    /// - Account balance overflow.
+    /// - Total supply overflow.
     fn deposit_unchecked(
         &mut self,
         account_id: &AccountIdRef,
@@ -225,6 +243,11 @@ pub trait Nep141Controller {
     /// Decreases the balance of `sender_account_id` by `amount` and increases
     /// the balance of `receiver_account_id` by the same. No change to total
     /// supply. No event emission or hook invocation.
+    ///
+    /// # Errors
+    ///
+    /// - Receiver balance overflow.
+    /// - Sender balance underflow.
     fn transfer_unchecked(
         &mut self,
         sender_account_id: &AccountIdRef,
@@ -234,14 +257,29 @@ pub trait Nep141Controller {
 
     /// Performs an NEP-141 token transfer, with event emission. Invokes
     /// [`Nep141Controller::TransferHook`].
+    ///
+    /// # Errors
+    ///
+    /// - Receiver balance overflow.
+    /// - Sender balance underflow.
     fn transfer(&mut self, transfer: &Nep141Transfer<'_>) -> Result<(), TransferError>;
 
     /// Performs an NEP-141 token mint, with event emission. Invokes
     /// [`Nep141Controller::MintHook`].
+    ///
+    /// # Errors
+    ///
+    /// - Account balance overflow.
+    /// - Total supply overflow.
     fn mint(&mut self, mint: &Nep141Mint<'_>) -> Result<(), DepositError>;
 
     /// Performs an NEP-141 token burn, with event emission. Invokes
     /// [`Nep141Controller::BurnHook`].
+    ///
+    /// # Errors
+    ///
+    /// - Account balance underflow.
+    /// - Total supply underflow.
     fn burn(&mut self, burn: &Nep141Burn<'_>) -> Result<(), WithdrawError>;
 }
 
