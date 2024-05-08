@@ -31,22 +31,9 @@ const RECEIVER_WASM: &[u8] =
 
 const THIRTY_TERAGAS: Gas = Gas::from_gas(30_000_000_000_000);
 
-fn token_meta(id: String) -> near_sdk::serde_json::Value {
-    near_sdk::serde_json::to_value(TokenMetadata {
-        title: Some(id),
-        description: Some("description".to_string()),
-        media: None,
-        media_hash: None,
-        copies: None,
-        issued_at: None,
-        expires_at: None,
-        starts_at: None,
-        updated_at: None,
-        extra: None,
-        reference: None,
-        reference_hash: None,
-    })
-    .unwrap()
+fn token_meta(id: impl Into<String>) -> near_sdk::serde_json::Value {
+    near_sdk::serde_json::to_value(TokenMetadata::new().title(id).description("description"))
+        .unwrap()
 }
 
 async fn setup_balances(
@@ -99,7 +86,7 @@ async fn create_and_mint() {
         token_0,
         Some(Token {
             token_id: "token_0".to_string(),
-            owner_id: alice.id().as_str().parse().unwrap(),
+            owner_id: alice.id().clone(),
             extensions_metadata: Default::default(),
         }),
     );
@@ -107,7 +94,7 @@ async fn create_and_mint() {
         token_1,
         Some(Token {
             token_id: "token_1".to_string(),
-            owner_id: bob.id().as_str().parse().unwrap(),
+            owner_id: bob.id().clone(),
             extensions_metadata: Default::default(),
         }),
     );
@@ -115,7 +102,7 @@ async fn create_and_mint() {
         token_2,
         Some(Token {
             token_id: "token_2".to_string(),
-            owner_id: charlie.id().as_str().parse().unwrap(),
+            owner_id: charlie.id().clone(),
             extensions_metadata: Default::default(),
         }),
     );
@@ -163,9 +150,9 @@ async fn create_and_mint_with_metadata_and_enumeration() {
         token_0,
         Some(Token {
             token_id: "token_0".to_string(),
-            owner_id: alice.id().as_str().parse().unwrap(),
+            owner_id: alice.id().clone(),
             extensions_metadata: [
-                ("metadata".to_string(), token_meta("token_0".to_string())),
+                ("metadata".to_string(), token_meta("token_0")),
                 ("approved_account_ids".to_string(), json!({})),
                 ("funky_data".to_string(), json!({"funky": "data"})),
             ]
@@ -176,9 +163,9 @@ async fn create_and_mint_with_metadata_and_enumeration() {
         token_1,
         Some(Token {
             token_id: "token_1".to_string(),
-            owner_id: bob.id().as_str().parse().unwrap(),
+            owner_id: bob.id().clone(),
             extensions_metadata: [
-                ("metadata".to_string(), token_meta("token_1".to_string())),
+                ("metadata".to_string(), token_meta("token_1")),
                 ("approved_account_ids".to_string(), json!({})),
                 ("funky_data".to_string(), json!({"funky": "data"})),
             ]
@@ -189,9 +176,9 @@ async fn create_and_mint_with_metadata_and_enumeration() {
         token_2,
         Some(Token {
             token_id: "token_2".to_string(),
-            owner_id: charlie.id().as_str().parse().unwrap(),
+            owner_id: charlie.id().clone(),
             extensions_metadata: [
-                ("metadata".to_string(), token_meta("token_2".to_string())),
+                ("metadata".to_string(), token_meta("token_2")),
                 ("approved_account_ids".to_string(), json!({})),
                 ("funky_data".to_string(), json!({"funky": "data"})),
             ]
@@ -337,11 +324,11 @@ async fn transfer_success() {
         vec![
             "before_nft_transfer(token_0)".to_string(),
             Nep171Event::NftTransfer(vec![NftTransferLog {
-                old_owner_id: alice.id().as_str().parse().unwrap(),
-                new_owner_id: bob.id().as_str().parse().unwrap(),
+                old_owner_id: alice.id().into(),
+                new_owner_id: bob.id().into(),
                 authorized_id: None,
                 memo: None,
-                token_ids: vec!["token_0".to_string()],
+                token_ids: vec!["token_0".into()],
             }])
             .to_event_string(),
             "after_nft_transfer(token_0)".to_string(),
@@ -358,7 +345,7 @@ async fn transfer_success() {
         token_0,
         Some(Token {
             token_id: "token_0".to_string(),
-            owner_id: bob.id().as_str().parse().unwrap(),
+            owner_id: bob.id().clone(),
             extensions_metadata: Default::default(),
         }),
     );
@@ -366,7 +353,7 @@ async fn transfer_success() {
         token_1,
         Some(Token {
             token_id: "token_1".to_string(),
-            owner_id: bob.id().as_str().parse().unwrap(),
+            owner_id: bob.id().clone(),
             extensions_metadata: Default::default(),
         }),
     );
@@ -374,7 +361,7 @@ async fn transfer_success() {
         token_2,
         Some(Token {
             token_id: "token_2".to_string(),
-            owner_id: charlie.id().as_str().parse().unwrap(),
+            owner_id: charlie.id().clone(),
             extensions_metadata: Default::default(),
         }),
     );
@@ -543,10 +530,10 @@ async fn transfer_call_success() {
         vec![
             "before_nft_transfer(token_0)".to_string(),
             Nep171Event::NftTransfer(vec![NftTransferLog {
-                token_ids: vec!["token_0".to_string()],
+                token_ids: vec!["token_0".into()],
                 authorized_id: None,
-                old_owner_id: alice.id().as_str().parse().unwrap(),
-                new_owner_id: bob.id().as_str().parse().unwrap(),
+                old_owner_id: alice.id().into(),
+                new_owner_id: bob.id().into(),
                 memo: None,
             }])
             .to_event_string(),
@@ -561,7 +548,7 @@ async fn transfer_call_success() {
         nft_token(&contract, "token_0").await,
         Some(Token {
             token_id: "token_0".to_string(),
-            owner_id: bob.id().as_str().parse().unwrap(),
+            owner_id: bob.id().clone(),
             extensions_metadata: Default::default(),
         }),
     );
@@ -602,10 +589,10 @@ async fn transfer_call_return_success() {
         vec![
             "before_nft_transfer(token_0)".to_string(),
             Nep171Event::NftTransfer(vec![NftTransferLog {
-                token_ids: vec!["token_0".to_string()],
+                token_ids: vec!["token_0".into()],
                 authorized_id: None,
-                old_owner_id: alice.id().as_str().parse().unwrap(),
-                new_owner_id: bob.id().as_str().parse().unwrap(),
+                old_owner_id: alice.id().into(),
+                new_owner_id: bob.id().into(),
                 memo: None,
             }])
             .to_event_string(),
@@ -613,10 +600,10 @@ async fn transfer_call_return_success() {
             format!("Received token_0 from {} via {}", alice.id(), alice.id()),
             "before_nft_transfer(token_0)".to_string(),
             Nep171Event::NftTransfer(vec![NftTransferLog {
-                token_ids: vec!["token_0".to_string()],
+                token_ids: vec!["token_0".into()],
                 authorized_id: None,
-                old_owner_id: bob.id().as_str().parse().unwrap(),
-                new_owner_id: alice.id().as_str().parse().unwrap(),
+                old_owner_id: bob.id().into(),
+                new_owner_id: alice.id().into(),
                 memo: None,
             }])
             .to_event_string(),
@@ -630,7 +617,7 @@ async fn transfer_call_return_success() {
         nft_token(&contract, "token_0").await,
         Some(Token {
             token_id: "token_0".to_string(),
-            owner_id: alice.id().as_str().parse().unwrap(),
+            owner_id: alice.id().clone(),
             extensions_metadata: Default::default(),
         }),
     );
@@ -671,10 +658,10 @@ async fn transfer_call_receiver_panic() {
         vec![
             "before_nft_transfer(token_0)".to_string(),
             Nep171Event::NftTransfer(vec![NftTransferLog {
-                token_ids: vec!["token_0".to_string()],
+                token_ids: vec!["token_0".into()],
                 authorized_id: None,
-                old_owner_id: alice.id().as_str().parse().unwrap(),
-                new_owner_id: bob.id().as_str().parse().unwrap(),
+                old_owner_id: alice.id().into(),
+                new_owner_id: bob.id().into(),
                 memo: None,
             }])
             .to_event_string(),
@@ -682,10 +669,10 @@ async fn transfer_call_receiver_panic() {
             format!("Received token_0 from {} via {}", alice.id(), alice.id()),
             "before_nft_transfer(token_0)".to_string(),
             Nep171Event::NftTransfer(vec![NftTransferLog {
-                token_ids: vec!["token_0".to_string()],
+                token_ids: vec!["token_0".into()],
                 authorized_id: None,
-                old_owner_id: bob.id().as_str().parse().unwrap(),
-                new_owner_id: alice.id().as_str().parse().unwrap(),
+                old_owner_id: bob.id().into(),
+                new_owner_id: alice.id().into(),
                 memo: None,
             }])
             .to_event_string(),
@@ -699,7 +686,7 @@ async fn transfer_call_receiver_panic() {
         nft_token(&contract, "token_0").await,
         Some(Token {
             token_id: "token_0".to_string(),
-            owner_id: alice.id().as_str().parse().unwrap(),
+            owner_id: alice.id().clone(),
             extensions_metadata: Default::default(),
         }),
     );
@@ -743,10 +730,10 @@ async fn transfer_call_receiver_send_return() {
         vec![
             "before_nft_transfer(token_0)".to_string(),
             Nep171Event::NftTransfer(vec![NftTransferLog {
-                token_ids: vec!["token_0".to_string()],
+                token_ids: vec!["token_0".into()],
                 authorized_id: None,
-                old_owner_id: alice.id().as_str().parse().unwrap(),
-                new_owner_id: bob.id().as_str().parse().unwrap(),
+                old_owner_id: alice.id().into(),
+                new_owner_id: bob.id().into(),
                 memo: None,
             }])
             .to_event_string(),
@@ -755,10 +742,10 @@ async fn transfer_call_receiver_send_return() {
             format!("Transferring token_0 to {}", charlie.id()),
             "before_nft_transfer(token_0)".to_string(),
             Nep171Event::NftTransfer(vec![NftTransferLog {
-                token_ids: vec!["token_0".to_string()],
+                token_ids: vec!["token_0".into()],
                 authorized_id: None,
-                old_owner_id: bob.id().as_str().parse().unwrap(),
-                new_owner_id: charlie.id().as_str().parse().unwrap(),
+                old_owner_id: bob.id().into(),
+                new_owner_id: charlie.id().into(),
                 memo: None,
             }])
             .to_event_string(),
@@ -773,7 +760,7 @@ async fn transfer_call_receiver_send_return() {
         nft_token(&contract, "token_0").await,
         Some(Token {
             token_id: "token_0".to_string(),
-            owner_id: charlie.id().as_str().parse().unwrap(),
+            owner_id: charlie.id().clone(),
             extensions_metadata: Default::default(),
         }),
     );
@@ -803,9 +790,9 @@ async fn transfer_approval_success() {
 
     let expected_view_token = Token {
         token_id: "token_0".into(),
-        owner_id: alice.id().as_str().parse().unwrap(),
+        owner_id: alice.id().clone(),
         extensions_metadata: [
-            ("metadata".to_string(), token_meta("token_0".to_string())),
+            ("metadata".to_string(), token_meta("token_0")),
             (
                 "approved_account_ids".to_string(),
                 json!({
@@ -848,9 +835,9 @@ async fn transfer_approval_success() {
         nft_token(&contract, "token_0").await,
         Some(Token {
             token_id: "token_0".to_string(),
-            owner_id: charlie.id().as_str().parse().unwrap(),
+            owner_id: charlie.id().clone(),
             extensions_metadata: [
-                ("metadata".to_string(), token_meta("token_0".to_string())),
+                ("metadata".to_string(), token_meta("token_0")),
                 ("approved_account_ids".to_string(), json!({})),
                 ("funky_data".to_string(), json!({"funky": "data"})),
             ]
@@ -908,8 +895,8 @@ async fn transfer_approval_unapproved_fail() {
     let expected_error_message = format!(
         "Smart contract panicked: {}",
         nep171::error::SenderNotApprovedError {
-            owner_id: alice.id().as_str().parse().unwrap(),
-            sender_id: bob.id().as_str().parse().unwrap(),
+            owner_id: alice.id().clone(),
+            sender_id: bob.id().clone(),
             token_id: "token_0".to_string(),
             approval_id: 0,
         }
@@ -971,7 +958,7 @@ async fn transfer_approval_double_approval_fail() {
     let expected_error = format!(
         "Smart contract panicked: {}",
         Nep178ApproveError::AccountAlreadyApproved(AccountAlreadyApprovedError {
-            account_id: bob.id().as_str().parse().unwrap(),
+            account_id: bob.id().clone(),
             token_id: "token_0".to_string(),
         }),
     );
@@ -1000,7 +987,7 @@ async fn transfer_approval_unauthorized_approval_fail() {
     let expected_error = format!(
         "Smart contract panicked: {}",
         Nep178ApproveError::Unauthorized(UnauthorizedError {
-            account_id: bob.id().as_str().parse().unwrap(),
+            account_id: bob.id().clone(),
             token_id: "token_0".to_string(),
         }),
     );
@@ -1094,8 +1081,8 @@ async fn transfer_approval_approved_but_wrong_approval_id_fail() {
         "Smart contract panicked: {}",
         nep171::error::Nep171TransferError::SenderNotApproved(
             nep171::error::SenderNotApprovedError {
-                sender_id: bob.id().as_str().parse().unwrap(),
-                owner_id: alice.id().as_str().parse().unwrap(),
+                sender_id: bob.id().clone(),
+                owner_id: alice.id().clone(),
                 token_id: "token_0".to_string(),
                 approval_id: 1,
             }

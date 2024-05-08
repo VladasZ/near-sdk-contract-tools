@@ -23,7 +23,7 @@ impl Contract {
             blobs: Vector::new(b"b"),
         };
 
-        contract.set_metadata(&FungibleTokenMetadata::new(
+        contract.set_metadata(&ContractMetadata::new(
             "My Fungible Token".into(),
             "MYFT".into(),
             24,
@@ -35,11 +35,7 @@ impl Contract {
     pub fn mint(&mut self, amount: U128) {
         Nep141Controller::mint(
             self,
-            &Nep141Mint {
-                amount: amount.into(),
-                receiver_id: &env::predecessor_account_id(),
-                memo: None,
-            },
+            &Nep141Mint::new(amount.0, env::predecessor_account_id()),
         )
         .unwrap();
     }

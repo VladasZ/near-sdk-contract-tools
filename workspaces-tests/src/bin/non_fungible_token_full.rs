@@ -108,7 +108,7 @@ impl Contract {
     pub fn new() -> Self {
         let mut contract = Self {};
 
-        contract.set_contract_metadata(ContractMetadata::new(
+        contract.set_contract_metadata(&ContractMetadata::new(
             "My NFT Smart Contract".to_string(),
             "MNSC".to_string(),
             None,
@@ -121,10 +121,10 @@ impl Contract {
         let receiver = env::predecessor_account_id();
         for token_id in token_ids {
             self.mint_with_metadata(
-                token_id.clone(),
-                receiver.clone(),
-                TokenMetadata::new()
-                    .title(token_id)
+                &token_id,
+                &receiver,
+                &TokenMetadata::new()
+                    .title(token_id.clone())
                     .description("description"),
             )
             .unwrap_or_else(|e| env::panic_str(&format!("Failed to mint: {:#?}", e)));
