@@ -25,7 +25,8 @@ impl From<Token> for TokenRecord {
 }
 
 mod full_no_hooks {
-    use near_sdk::NearToken;
+    use near_sdk::test_utils::VMContextBuilder;
+use near_sdk::{testing_env, NearToken};
 
     use super::*;
 
@@ -44,13 +45,24 @@ mod full_no_hooks {
         };
 
         let token_id = "token1".to_string();
-        let alice: AccountId = "alice".parse().unwrap();
+        let alice: AccountId = "alice_has_actually_very_long_account_name".parse().unwrap();
+        let bob: AccountId = "bob".parse().unwrap();
 
         Nep145Controller::deposit_to_storage_account(&mut n, &alice, NearToken::from_near(1))
+            .unwrap();
+        Nep145Controller::deposit_to_storage_account(&mut n, &bob, NearToken::from_near(1))
             .unwrap();
 
         n.mint_with_metadata(&token_id, &alice, &TokenMetadata::new().title("Title"))
             .unwrap();
+
+
+        testing_env!(VMContextBuilder::new()
+            .predecessor_account_id(alice.clone())
+            .attached_deposit(NearToken::from_yoctonear(1u128))
+            .build());
+
+        n.nft_transfer(bob.clone(), token_id.to_string(), None, None);
 
         let nft_tok = n.nft_token(token_id);
         dbg!(nft_tok);
